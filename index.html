@@ -20,6 +20,7 @@
         .boarding-pass-dashed::before, .boarding-pass-dashed::after { content: ''; position: absolute; top: -10px; width: 20px; height: 20px; background: #CFC8B3; border-radius: 50%; }
         .boarding-pass-dashed::before { left: -13px; }
         .boarding-pass-dashed::after { right: -13px; }
+        .date-active { background-color: #8E9775 !important; color: white !important; transform: scale(1.1) rotate(-2deg); box-shadow: 0 10px 20px rgba(142, 151, 117, 0.4); }
     </style>
     <!-- 修正：強制所有套件使用同一個 React 版本，避免 Hook 錯誤 -->
     <script type="importmap">
@@ -54,7 +55,7 @@
           Calendar, Plus, Map as MapIcon, Check, Trash2, ArrowRight, Wallet, 
           User, RefreshCw, ChevronRight, CheckSquare, AlertCircle, MapPin, 
           CreditCard, Send, MessageSquare, CloudRain, MoveVertical, Navigation, 
-          Camera, Plane, Luggage, Clock, ExternalLink, Settings
+          Camera, Plane, Luggage, Clock, ExternalLink
         } from 'lucide-react';
         import { motion, Reorder, AnimatePresence } from 'framer-motion';
 
@@ -64,14 +65,17 @@
         let firebaseApp, db, auth, appId;
         let isConfigMissing = false;
 
+        // 若您在外部環境 (如 Netlify) 使用，請將您的 Firebase Config 貼在下方 "" 中
+        // const manualFirebaseConfig = { apiKey: "...", ... };
+        const manualFirebaseConfig = null;
+
         try {
             const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-            const firebaseConfig = rawConfig ? JSON.parse(rawConfig) : null;
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-trip-default';
+            const firebaseConfig = manualFirebaseConfig || (rawConfig ? JSON.parse(rawConfig) : null);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-trip-v5-final';
             
             if (!firebaseConfig || !firebaseConfig.apiKey) {
                 isConfigMissing = true;
-                console.warn("Firebase configuration is missing. App is running in standby mode.");
             } else {
                 firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
                 db = getFirestore(firebaseApp);
@@ -175,22 +179,15 @@
             return () => { unsubS(); unsubE(); unsubN(); unsubM(); unsubC(); unsubB(); };
           }, [user]);
 
-          // 若缺少設定，顯示導航指引
+          // 環境異常畫面
           if (isConfigMissing) {
             return (
               <div className="min-h-screen flex items-center justify-center p-8 text-center bg-[#CFC8B3]">
-                <div className="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-red-500">
+                <div className="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-red-500 font-black">
                   <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500"><AlertCircle size={48} /></div>
-                  <h1 className="text-3xl font-black mb-4">環境變數缺失</h1>
-                  <p className="text-gray-500 font-bold leading-relaxed mb-8">
-                    您正嘗試在外部環境開啟此 App。由於 Netlify 無法直接讀取 Canvas 內部的資料庫密鑰，畫面會顯示為空白。
-                  </p>
-                  <div className="text-left space-y-4 bg-gray-50 p-6 rounded-2xl text-sm font-bold border-2 border-black/5 mb-8">
-                    <p className="text-red-600">解決方案：</p>
-                    <p>1. 請在程式碼開頭手動填入您的 Firebase Config。</p>
-                    <p>2. 確保 GitHub 的變數名稱與程式碼一致。</p>
-                  </div>
-                  <button onClick={() => window.location.reload()} className="w-full bg-black text-white py-5 rounded-2xl font-black uppercase shadow-lg">重新嘗試</button>
+                  <h1 className="text-3xl mb-4">環境變數缺失</h1>
+                  <p className="text-gray-500 leading-relaxed mb-8">由於 Netlify 無法讀取 Canvas 內部的密鑰，請在程式碼開頭手動填入 Firebase Config 才能正常連線資料庫。</p>
+                  <button onClick={() => window.location.reload()} className="w-full bg-black text-white py-5 rounded-2xl uppercase">重新嘗試</button>
                 </div>
               </div>
             );
@@ -215,6 +212,7 @@
 
           const askConfirm = (title, message, action) => setConfirmData({ title, message, action });
 
+          // 核心 Actions
           const handleAddSchedule = async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
@@ -283,7 +281,7 @@
               <header className="sticky top-0 z-[100] bg-[#CFC8B3]/90 backdrop-blur-md px-6 py-8 flex justify-between items-center border-b-2 border-black/5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center text-[#CFC8B3] rotate-3 shadow-lg"><MapIcon size={24} strokeWidth={3} /></div>
-                  <div><h1 className="text-2xl tracking-tighter leading-none">SWISS 2026</h1><p className="text-[10px] text-[#8E9775] tracking-widest uppercase mt-1 opacity-60">SHARED DIARY</p></div>
+                  <div><h1 className="text-2xl tracking-tighter leading-none uppercase">Swiss 2026</h1><p className="text-[10px] text-[#8E9775] tracking-widest uppercase mt-1 opacity-60">Shared Diary</p></div>
                 </div>
                 <button onClick={() => setIsAddingModalOpen(true)} className="bg-[#8E9775] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"><Plus size={28} strokeWidth={4}/></button>
               </header>
@@ -291,12 +289,12 @@
               <main className="px-6 py-6 max-w-lg mx-auto">
                 {activeTab === 'schedule' && (
                   <div className="space-y-8">
-                    {/* 天氣看板 */}
+                    {/* 天氣 */}
                     <div className="bg-gradient-to-br from-[#8BA6A9] to-[#6C8D91] rounded-[2.5rem] p-6 text-white shadow-xl relative overflow-hidden">
                       <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2 opacity-80"><MapPin size={14} /><span className="text-[10px] font-bold uppercase">Interlaken, Switzerland</span></div>
                         <div className="flex justify-between items-end">
-                          <div><h3 className="text-4xl font-black leading-none">3°C / 9°C</h3><p className="text-sm font-bold mt-1 opacity-90">晴時多雲 (Partly Cloudy)</p></div>
+                          <div><h3 className="text-4xl font-black">3°C / 9°C</h3><p className="text-sm opacity-90">晴時多雲 (Partly Cloudy)</p></div>
                           <div className="text-right"><div className="flex items-center justify-end gap-1 text-[11px] font-bold mb-1"><CloudRain size={12} /> 降雨 15%</div><p className="text-[10px] opacity-60">Visibility: 12km</p></div>
                         </div>
                       </div>
@@ -304,7 +302,7 @@
                     </div>
 
                     {/* 今日大綱 */}
-                    <div className="bg-white/60 rounded-[3rem] p-8 border-2 border-white/50 shadow-inner font-black">
+                    <div className="bg-white/60 rounded-[3rem] p-8 border-2 border-white/50 shadow-inner">
                       <div className="flex justify-between items-center mb-8">
                         <h3 className="text-xl">今日大綱</h3>
                         <span className="text-[10px] bg-black/5 px-3 py-1 rounded-full opacity-50">Day {SWISS_DAYS.findIndex(d => d.id === selectedDay) + 1}</span>
@@ -321,7 +319,7 @@
                       </div>
                     </div>
 
-                    {/* 日期選擇器 */}
+                    {/* 日期軸 */}
                     <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar touch-pan-x">
                       {SWISS_DAYS.map(day => (
                         <button key={day.id} onClick={() => setSelectedDay(day.id)} className={`flex-shrink-0 flex flex-col items-center justify-center w-24 h-24 rounded-[2.5rem] transition-all ${selectedDay === day.id ? 'bg-[#8E9775] text-white scale-110 shadow-lg rotate-[-2deg]' : 'bg-white/40 opacity-40'}`}>
@@ -331,8 +329,8 @@
                       ))}
                     </div>
 
-                    {/* 詳細列表與小人 */}
-                    <div className="relative pl-10 space-y-8 font-black">
+                    {/* 詳細清單 */}
+                    <div className="relative pl-10 space-y-8">
                       <div className="absolute left-[18px] top-4 bottom-4 w-[2.5px] bg-[#1C1912]/10 rounded-full"></div>
                       <Reorder.Group axis="y" values={currentItems} onReorder={handleReorder} className="space-y-8">
                         {currentItems.map((item, idx) => (
@@ -340,7 +338,7 @@
                             {idx === nextRunnerIdx && <div className="absolute -left-[45px] top-4 z-20 animate-bounce text-3xl">🏃‍♂️</div>}
                             <div className={`bg-white rounded-[2.5rem] journal-card p-6 relative ${item.done ? 'opacity-40 grayscale' : ''}`}>
                               <div className={`absolute top-0 right-0 w-3 h-full ${CATEGORY_COLORS[item.category] || 'bg-gray-200'}`} />
-                              <div className="flex justify-between items-start mb-4 font-black">
+                              <div className="flex justify-between items-start mb-4">
                                 <span className="text-[10px] bg-black/5 px-3 py-1 rounded-lg">📍 {String(item.city || "")}</span>
                                 <div className="flex gap-2">
                                    <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center cursor-grab text-gray-300"><MoveVertical size={14} /></div>
@@ -351,11 +349,11 @@
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3 mb-1">
                                     <span className="text-xs font-mono text-[#8E9775]">{String(item.time || "")}</span>
-                                    <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id), { done: !item.done })} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${item.done ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-100' : 'border-gray-100'}`}><Check size={18} strokeWidth={5}/></button>
+                                    <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id), { done: !item.done })} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${item.done ? 'bg-green-500 border-green-500 text-white shadow-lg' : 'border-gray-100'}`}><Check size={18} strokeWidth={5}/></button>
                                   </div>
-                                  <h4 className="text-xl mb-2 leading-tight">{String(item.title || "")}</h4>
-                                  {item.mapUrl && <a href={String(item.mapUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] bg-blue-50 text-blue-600 px-3 py-2 rounded-xl font-black hover:bg-blue-100 mb-4 transition-colors"><Navigation size={12}/> GOOGLE MAPS 導航</a>}
-                                  {item.note && <p className="text-[12px] text-gray-400 italic mt-2 opacity-80 leading-relaxed font-bold">“ {item.note} ”</p>}
+                                  <h4 className="text-xl font-black mb-2 leading-tight">{String(item.title || "")}</h4>
+                                  {item.mapUrl && <a href={String(item.mapUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] bg-blue-50 text-blue-600 px-3 py-2 rounded-xl font-black"><Navigation size={12}/> GOOGLE MAPS 導航</a>}
+                                  {item.note && <p className="text-[12px] text-gray-400 italic mt-2 opacity-80 leading-relaxed">“ {item.note} ”</p>}
                                 </div>
                               </div>
                               {/* 相片區 */}
@@ -387,23 +385,24 @@
                   <div className="space-y-8">
                     <div className="bg-[#1C1912] rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
                       <div className="absolute top-6 right-8 text-right opacity-30 font-black"><p className="text-[10px]">1 CHF = {RATE_CHF} TWD</p></div>
-                      <p className="text-[12px] text-[#8E9775] mb-4 uppercase tracking-[0.4em] font-black">Budget Tracking</p>
-                      <h2 className="text-6xl font-black tracking-tighter italic leading-none font-black"><span className="text-xl opacity-40 mr-2">NT$</span>{Math.round(totalExpenseTWD).toLocaleString()}</h2>
+                      <p className="text-[12px] text-[#8E9775] mb-4 uppercase tracking-[0.4em]">Budget Tracking</p>
+                      <h2 className="text-6xl font-black tracking-tighter italic leading-none"><span className="text-xl opacity-40 mr-2">NT$</span>{Math.round(totalExpenseTWD).toLocaleString()}</h2>
+                      {/* 成員統計 */}
                       <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 gap-4">
                         {Object.entries(expenseSummary).map(([name, total]) => (
-                          <div key={name}><p className="text-[10px] opacity-40 uppercase font-black">@{name}</p><p className="text-sm font-mono font-black">NT$ {Math.round(total).toLocaleString()}</p></div>
+                          <div key={name}><p className="text-[10px] opacity-40 uppercase">@{name}</p><p className="text-sm font-mono">NT$ {Math.round(total).toLocaleString()}</p></div>
                         ))}
                       </div>
                     </div>
                     {expenses.map(ex => (
-                      <div key={ex.id} className="bg-white rounded-[2.5rem] p-8 journal-card flex justify-between items-center relative font-black">
+                      <div key={ex.id} className="bg-white rounded-[2.5rem] p-8 journal-card flex justify-between items-center relative">
                         <div className="flex gap-4 items-center">
                           {ex.photo && <div className="w-16 h-16 rounded-2xl overflow-hidden border border-black/5 shadow-sm shrink-0"><img src={String(ex.photo)} className="w-full h-full object-cover" /></div>}
                           <div><p className="text-2xl font-black tracking-tight leading-tight">{String(ex.title || "")}</p><p className="text-[10px] text-[#8E9775] font-mono tracking-widest uppercase mt-1">@{ex.user} • {ex.currency} {ex.amount}</p></div>
                         </div>
-                        <div className="text-right flex items-center gap-4 shrink-0 font-black">
+                        <div className="text-right flex items-center gap-4 shrink-0">
                           <p className="text-2xl tracking-tighter italic leading-none">NT$ {Math.round(ex.amount * (ex.currency === 'CHF' ? RATE_CHF : 1)).toLocaleString()}</p>
-                          <button onClick={() => askConfirm("刪除支出", "確定要刪除這筆花費？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', ex.id)); setConfirmData(null); })} className="text-red-100 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                          <button onClick={() => askConfirm("刪除支出", "確定要刪除這筆花費？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', ex.id)); setConfirmData(null); })} className="text-red-100 hover:text-red-500"><Trash2 size={16} /></button>
                         </div>
                       </div>
                     ))}
@@ -414,10 +413,10 @@
                   <div className="space-y-10">
                     <h2 className="text-4xl font-black tracking-tighter px-2">BOARDING PASS</h2>
                     {bookings.map((ticket) => (
-                      <div key={ticket.id} className="bg-white rounded-[2rem] shadow-xl overflow-hidden border-2 border-black flex flex-col journal-card font-black">
+                      <div key={ticket.id} className="bg-white rounded-[2rem] shadow-xl overflow-hidden border-2 border-black flex flex-col journal-card">
                         <div className={`p-6 text-white flex justify-between items-center ${ticket.type === '去程' ? 'bg-[#AA1D24]' : 'bg-[#1C1912]'}`}>
-                          <div className="flex items-center gap-4"><Plane size={24} /><div><p className="text-xl uppercase tracking-tighter leading-none">{ticket.type} • Emirates</p><p className="text-[10px] opacity-70 font-mono tracking-widest uppercase mt-1 font-bold">{ticket.flightNo} • {ticket.model}</p></div></div>
-                          <p className="font-mono text-sm uppercase">{ticket.date}</p>
+                          <div className="flex items-center gap-4"><Plane size={24} /><div><p className="text-xl font-black uppercase tracking-tighter leading-none">{ticket.type} • Emirates</p><p className="text-[10px] opacity-70 font-mono tracking-widest uppercase mt-1 font-bold">{ticket.flightNo} • {ticket.model}</p></div></div>
+                          <p className="font-mono text-sm font-black uppercase">{ticket.date}</p>
                         </div>
                         <div className="p-8 grid grid-cols-3 items-center text-center font-mono">
                           <div><p className="text-4xl font-black leading-none">{ticket.from}</p><p className="text-xs text-[#8E9775] font-bold mt-1 uppercase">{ticket.departureTime}</p></div>
@@ -427,12 +426,13 @@
                           </div>
                           <div><p className="text-4xl font-black leading-none">{ticket.to}</p><p className="text-xs text-[#8E9775] font-bold mt-1 uppercase">{ticket.arrivalTime}</p></div>
                         </div>
-                        <div className="px-8 pb-8 flex justify-between items-center boarding-pass-dashed pt-8 font-black">
+                        <div className="px-8 pb-8 flex justify-between items-center boarding-pass-dashed pt-8">
                            <div className="text-[10px] font-bold opacity-60 uppercase flex items-center gap-2"><Clock size={12} /> {ticket.transitInfo || "DIRECT FLIGHT"}</div>
-                           <button onClick={() => askConfirm("刪除憑證", "確定要刪除這張票券？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', ticket.id)); setConfirmData(null); })}><Trash2 size={16} className="opacity-20 hover:opacity-100 transition-all"/></button>
+                           <button onClick={() => askConfirm("刪除憑證", "確定要刪除這張票券？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', ticket.id)); setConfirmData(null); })}><Trash2 size={16} className="opacity-20 hover:opacity-100"/></button>
                         </div>
                       </div>
                     ))}
+                    {bookings.length === 0 && <p className="text-center opacity-30 py-20 italic font-bold">尚未錄入航程憑證...</p>}
                   </div>
                 )}
 
@@ -450,7 +450,7 @@
                             <button onClick={() => toggleChecklist(item.id, item.done)} className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-all ${item.done ? 'bg-green-500 border-green-500 text-white shadow-lg' : 'bg-gray-50'}`}><Check size={24} strokeWidth={4}/></button>
                             <span className={`text-xl ${item.done ? 'line-through opacity-50' : ''}`}>{String(item.text || "")}</span>
                           </div>
-                          <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'checklist', item.id))} className="text-red-100 hover:text-red-500 transition-all"><Trash2 size={18}/></button>
+                          <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'checklist', item.id))} className="text-red-100 hover:text-red-500"><Trash2 size={18}/></button>
                         </div>
                       ))}
                       <form onSubmit={async (e) => {
@@ -460,30 +460,30 @@
                         await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'checklist'), { text: input.value, done: false, timestamp: Date.now() });
                         input.value = "";
                       }} className="flex gap-3 mt-8">
-                        <input name="itemInput" placeholder="需要帶什麼？" className="flex-1 bg-white p-6 rounded-[2rem] border-2 border-black/5 outline-none font-black shadow-inner focus:border-[#8E9775] transition-all" />
-                        <button type="submit" className="bg-[#1C1912] text-white px-8 rounded-[2rem] font-black active:scale-90 transition-all shadow-lg">ADD</button>
+                        <input name="itemInput" placeholder="需要帶什麼？" className="flex-1 bg-white p-6 rounded-[2rem] border-2 border-black/5 outline-none font-black shadow-inner" />
+                        <button type="submit" className="bg-[#1C1912] text-white px-8 rounded-[2rem] font-black shadow-lg">ADD</button>
                       </form>
                     </div>
                   </div>
                 )}
 
                 {activeTab === 'notebook' && (
-                  <div className="space-y-6 flex flex-col min-h-[60vh] font-black">
+                  <div className="space-y-6 flex flex-col min-h-[60vh]">
                     <h2 className="text-4xl tracking-tighter flex items-center gap-3 font-black"><MessageSquare className="text-[#8E9775]" size={32} /> NOTEBOOK</h2>
-                    <div className="flex-1 bg-white/40 rounded-[3rem] p-6 border-2 border-white min-h-[400px] flex flex-col shadow-inner">
+                    <div className="flex-1 bg-white/40 rounded-[3rem] p-6 border-2 border-white min-h-[400px] flex flex-col shadow-inner font-black">
                       <div className="flex-1 overflow-y-auto space-y-4 pr-2 no-scrollbar">
                         {notes.map(note => (
                           <div key={note.id} className={`flex flex-col ${note.user === 'Zora' ? 'items-end' : 'items-start'}`}>
-                            <span className="text-[9px] font-bold text-[#8E9775] mb-1 px-2 uppercase tracking-widest font-black">@{note.user}</span>
+                            <span className="text-[9px] font-bold text-[#8E9775] mb-1 px-2 uppercase tracking-widest">@{note.user}</span>
                             <div className={`p-4 rounded-3xl max-w-[85%] text-sm font-bold shadow-sm ${note.user === 'Zora' ? 'bg-[#8E9775] text-white rounded-tr-none' : 'bg-white text-[#1C1912] rounded-tl-none'}`}>{String(note.text || "")}</div>
                           </div>
                         ))}
                       </div>
                       <div className="mt-6 flex gap-3">
-                        <input id="chat-input" placeholder="輸入即時筆記..." className="flex-1 bg-white p-5 rounded-full border-2 border-black/5 shadow-inner text-sm font-bold outline-none focus:border-[#8E9775] transition-all"
+                        <input id="chat-input" placeholder="輸入即時筆記..." className="flex-1 bg-white p-5 rounded-full border-2 border-black/5 shadow-inner text-sm font-bold outline-none"
                           onKeyDown={async (e) => { if(e.key === 'Enter' && e.target.value.trim()) { await handleSendMessage(e.target.value); e.target.value = ""; } }}
                         />
-                        <button onClick={async () => { const input = document.getElementById('chat-input'); if(input.value.trim()) { await handleSendMessage(input.value); input.value = ""; } }} className="w-14 h-14 bg-black text-white rounded-full flex items-center justify-center active:scale-90 transition-all shadow-lg"><Send size={20} /></button>
+                        <button onClick={async () => { const input = document.getElementById('chat-input'); if(input.value.trim()) { await handleSendMessage(input.value); input.value = ""; } }} className="w-14 h-14 bg-black text-white rounded-full flex items-center justify-center shadow-lg"><Send size={20} /></button>
                       </div>
                     </div>
                   </div>
@@ -505,22 +505,22 @@
               {/* 彈窗集 */}
               <Modal isOpen={isAddingModalOpen} onClose={() => setIsAddingModalOpen(false)} title="新增項目">
                  {activeTab === 'schedule' ? (
-                  <form onSubmit={handleAddSchedule} className="space-y-5 pb-6 font-black">
+                  <form onSubmit={handleAddSchedule} className="space-y-5 pb-6">
                     <div className="grid grid-cols-2 gap-4 font-black">
-                      <div className="space-y-1"><p className="text-[10px] opacity-40 ml-4 uppercase">Departure</p><input name="time" type="time" required className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" /></div>
-                      <div className="space-y-1"><p className="text-[10px] opacity-40 ml-4 uppercase">Location</p><input name="city" placeholder="地點" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" /></div>
+                      <div className="space-y-1"><p className="text-[10px] opacity-40 ml-4 uppercase">Departure</p><input name="time" type="time" required className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" /></div>
+                      <div className="space-y-1"><p className="text-[10px] opacity-40 ml-4 uppercase">Location</p><input name="city" placeholder="地點" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" /></div>
                     </div>
-                    <input name="title" required placeholder="計畫名稱" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
-                    <input name="note" placeholder="詳細備註" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
-                    <input name="mapUrl" placeholder="GOOGLE MAP 連結" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
-                    <button type="submit" className="w-full bg-[#8E9775] text-white py-8 rounded-[3rem] font-black text-xl shadow-xl active:scale-95 transition-all uppercase tracking-tighter">Confirm Save</button>
+                    <input name="title" required placeholder="計畫名稱" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
+                    <input name="note" placeholder="詳細備註" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
+                    <input name="mapUrl" placeholder="GOOGLE MAP 連結" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
+                    <button type="submit" className="w-full bg-[#8E9775] text-white py-8 rounded-[3rem] font-black text-xl shadow-xl active:scale-95 uppercase tracking-tighter">Confirm Save</button>
                   </form>
                 ) : activeTab === 'expense' ? (
                   <form onSubmit={handleAddExpense} className="space-y-5 pb-6 font-black">
                     <select name="user" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black">{members.map(m => <option key={m} value={m}>@{m}</option>)}</select>
-                    <input name="title" required placeholder="消費品項" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+                    <input name="title" required placeholder="消費品項" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
                     <div className="grid grid-cols-2 gap-4">
-                      <input name="amount" type="number" step="0.01" required placeholder="金額" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+                      <input name="amount" type="number" step="0.01" required placeholder="金額" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
                       <select name="currency" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black">{CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
                     </div>
                     <div className="p-6 rounded-3xl bg-gray-50 border-2 border-black/5 text-center">
@@ -528,28 +528,28 @@
                       <input type="file" accept="image/*" onChange={(e) => { const reader = new FileReader(); reader.onload = (ev) => setExpensePhoto(ev.target.result); if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]); }} className="text-xs mx-auto" />
                       {expensePhoto && <img src={expensePhoto} className="mt-4 w-full h-32 object-cover rounded-2xl border" />}
                     </div>
-                    <button type="submit" className="w-full bg-[#1C1912] text-white py-8 rounded-[3rem] font-black text-xl active:scale-95 shadow-xl uppercase tracking-tighter">Record Expense</button>
+                    <button type="submit" className="w-full bg-[#1C1912] text-white py-8 rounded-[3rem] font-black text-xl shadow-xl active:scale-95 uppercase tracking-tighter">Record Expense</button>
                   </form>
                 ) : activeTab === 'booking' ? (
                   <form onSubmit={handleAddBooking} className="space-y-4 pb-6 font-black">
                     <div className="grid grid-cols-2 gap-4 font-black">
-                      <select name="type" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none"><option value="去程">去程</option><option value="回程">回程</option></select>
-                      <input name="date" type="date" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+                      <select name="type" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black"><option value="去程">去程</option><option value="回程">回程</option></select>
+                      <input name="date" type="date" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <input name="flightNo" required placeholder="航班號 (EK0387)" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
-                      <input name="model" placeholder="機型 (B777)" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none w-full" />
+                      <input name="flightNo" required placeholder="航班號" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
+                      <input name="model" placeholder="機型" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none w-full font-black" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <input name="from" required placeholder="出發地 (TPE)" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
-                      <input name="to" required placeholder="目的地 (DXB)" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+                      <input name="from" required placeholder="出發地" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
+                      <input name="to" required placeholder="目的地" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <input name="departureTime" type="time" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
-                      <input name="arrivalTime" type="time" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+                      <input name="departureTime" type="time" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
+                      <input name="arrivalTime" type="time" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" />
                     </div>
-                    <div className="space-y-1 font-black"><p className="text-[8px] opacity-40 uppercase ml-2 font-bold">Transit & duration</p><div className="flex gap-2 font-black"><input name="transitInfo" placeholder="轉機點" className="flex-1 p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" /><input name="duration" placeholder="時數" className="w-24 p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black outline-none" /></div></div>
-                    <button type="submit" className="w-full bg-[#AA1D24] text-white py-6 rounded-[2rem] font-black shadow-xl active:scale-95 transition-all uppercase tracking-tighter">Create Pass</button>
+                    <div className="space-y-1 font-black"><p className="text-[8px] opacity-40 uppercase ml-2 font-bold">Transit & duration</p><div className="flex gap-2"><input name="transitInfo" placeholder="轉機點" className="flex-1 p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" /><input name="duration" placeholder="時數" className="w-24 p-4 rounded-2xl bg-gray-50 border-2 border-black/5 outline-none font-black" /></div></div>
+                    <button type="submit" className="w-full bg-[#AA1D24] text-white py-6 rounded-[2rem] font-black shadow-xl uppercase tracking-tighter">Create Pass</button>
                   </form>
                 ) : null}
               </Modal>
@@ -561,9 +561,9 @@
                       <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500 font-black"><AlertCircle size={48} strokeWidth={3} /></div>
                       <h3 className="text-2xl font-black mb-4">{confirmData.title}</h3>
                       <p className="text-sm text-gray-400 mb-10 leading-relaxed font-bold">{confirmData.message}</p>
-                      <div className="flex gap-4 font-black">
-                        <button onClick={() => setConfirmData(null)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black text-gray-500 active:scale-95 transition-all">取消</button>
-                        <button onClick={confirmData.action} className="flex-1 py-5 bg-red-500 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">確定</button>
+                      <div className="flex gap-4">
+                        <button onClick={() => setConfirmData(null)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black text-gray-500">取消</button>
+                        <button onClick={confirmData.action} className="flex-1 py-5 bg-red-500 text-white rounded-2xl font-black shadow-lg">確定</button>
                       </div>
                     </motion.div>
                   </div>
@@ -572,10 +572,9 @@
 
               <Modal isOpen={isPrepCompleteModalOpen} onClose={() => setIsPrepCompleteModalOpen(false)} title="準備就緒！">
                 <div className="text-center py-10 space-y-6 px-4 font-black">
-                  <div className="text-8xl animate-bounce font-black">🇨🇭</div>
+                  <div className="text-8xl animate-bounce">🇨🇭</div>
                   <h3 className="text-3xl leading-tight font-black">準備完成！旅途愉快！</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed font-bold">恭喜！您的裝備已經全部備妥。帶著開心的心情，準備開啟您的瑞士大冒險吧！</p>
-                  <button onClick={() => setIsPrepCompleteModalOpen(false)} className="w-full bg-[#8E9775] text-white py-6 rounded-3xl font-black shadow-xl active:scale-95 uppercase transition-all">Start Adventure</button>
+                  <button onClick={() => setIsPrepCompleteModalOpen(false)} className="w-full bg-[#8E9775] text-white py-6 rounded-3xl font-black shadow-xl">Start Adventure</button>
                 </div>
               </Modal>
             </div>
