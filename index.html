@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Swiss Diary 2026 - Cloud Flagship v3.1</title>
+    <title>Swiss Diary 2026 - Cloud Flagship v3.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -45,7 +45,7 @@
     <!-- 載入中遮罩 -->
     <div id="loading-spinner" class="fixed inset-0 flex flex-col items-center justify-center loading-overlay">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-morandi border-t-transparent"></div>
-        <p class="mt-4 font-black text-dark-green tracking-widest uppercase text-xs">Synchronizing Swiss Pro Data...</p>
+        <p class="mt-4 font-black text-dark-green tracking-widest uppercase text-xs">Synchronizing Swiss Cloud Pro...</p>
     </div>
 
     <!-- 頂部標題列 -->
@@ -65,7 +65,7 @@
     </header>
 
     <main id="app-content" class="px-6 py-8 max-w-lg mx-auto min-h-[70vh] page-content-padding">
-        <!-- 內容動態填充 -->
+        <!-- 內容填充區 -->
     </main>
 
     <!-- 底部導覽列 -->
@@ -110,10 +110,10 @@
                 <i data-lucide="alert-triangle" class="text-morandi w-10 h-10"></i>
             </div>
             <h3 id="confirm-title" class="text-2xl font-black text-[#1C1912] mb-3 tracking-tighter">確認動作</h3>
-            <p id="confirm-message" class="text-sm font-bold text-gray-400 mb-8 leading-relaxed">您確定要執行此操作嗎？</p>
+            <p id="confirm-message" class="text-sm font-bold text-gray-400 mb-8 leading-relaxed">確定執行此操作嗎？</p>
             <div class="flex gap-4">
                 <button onclick="closeConfirmModal()" class="flex-1 py-5 bg-gray-100 rounded-2xl font-black text-gray-500 active:scale-95">取消</button>
-                <button id="confirm-action-btn" class="flex-1 py-5 bg-dark-green text-white rounded-2xl font-black shadow-lg shadow-dark-green/30 active:scale-95">確定</button>
+                <button id="confirm-action-btn" class="flex-1 py-5 bg-dark-green text-white rounded-2xl font-black shadow-lg shadow-dark-green/30 active:scale-95">執行</button>
             </div>
         </div>
     </div>
@@ -129,7 +129,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-pro-v3-final';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-trip-final-pro-v32';
 
         // --- 核心狀態 ---
         let appMainTitle = "SWISS 2026";
@@ -147,61 +147,62 @@
 
         const SWISS_DAYS = Array.from({length: 13}, (_, i) => ({ id: `2026-03-${18+i}`, label: `Day ${i+1}`, date: `3/${18+i}` }));
 
-        // --- 13 天定稿版行程數據 (分鐘級) ---
-        const INITIAL_DATA_PLANS = [
+        // --- 完整還原：13 天分鐘級定稿行程 ---
+        const INITIAL_SCHEDULES = [
+            // Day 1
             { date: '2026-03-18', time: '12:25', title: '抵達蘇黎世機場', city: '蘇黎世', cat: 'flight', note: '入境、領行李、買水/點心 (75分)', order: 1 },
             { date: '2026-03-18', time: '13:45', title: 'Zurich Airport 出發', city: '蘇黎世', cat: 'transport', note: '火車前往 Interlaken Ost', order: 2 },
             { date: '2026-03-18', time: '16:45', title: '飯店入住 Check-in', city: '因特拉肯', cat: 'hotel', note: '放行李 (45分)', order: 3 },
-            { date: '2026-03-18', time: '17:45', title: 'Aare River & Hohematte 草地', city: '因特拉肯', cat: 'spot', note: '黃昏+藍調拍攝', order: 4 },
-
+            { date: '2026-03-18', time: '17:45', title: 'Aare River 阿勒河 & Hohematte 草地', city: '因特拉肯', cat: 'spot', note: '黃昏+藍調拍攝', order: 4 },
+            // Day 2
             { date: '2026-03-19', time: '08:30', title: 'Interlaken Ost 出發', city: '因特拉肯', cat: 'transport', order: 1 },
             { date: '2026-03-19', time: '09:30', title: '搭乘 Eiger Express 艾格快線', city: '格林德瓦', cat: 'transport', order: 2 },
-            { date: '2026-03-19', time: '10:15', title: '抵達少女峰 Jungfraujoch', city: '少女峰', cat: 'spot', note: '斯芬克斯、阿萊奇冰川、冰原平台', order: 3 },
-            { date: '2026-03-19', time: '16:30', title: 'Grindelwald 村落街拍', city: '格林德瓦', cat: 'spot', note: '停留 2 小時', order: 4 },
-
+            { date: '2026-03-19', time: '10:15', title: '抵達少女峰觀景台', city: '少女峰', cat: 'spot', note: '斯芬克斯、阿萊奇冰川拍攝', order: 3 },
+            { date: '2026-03-19', time: '16:30', title: 'Grindelwald 村落街拍', city: '格林德瓦', cat: 'spot', note: '街拍 2 小時', order: 4 },
+            // Day 3
             { date: '2026-03-20', time: '09:55', title: '抵達 First 菲斯特山', city: '格林德瓦', cat: 'spot', note: '懸崖步道 & Bachalpsee', order: 1 },
-            { date: '2026-03-20', time: '14:30', title: '抵達 Lauterbrunnen 瀑布谷', city: '勞特布龍嫩', cat: 'spot', note: '施陶巴赫瀑布', order: 2 },
-            { date: '2026-03-20', time: '17:30', title: 'Wengen 溫根小鎮', city: '溫根', cat: 'spot', note: '街拍 1 小時', order: 3 },
-
-            { date: '2026-03-21', time: '09:45', title: '抵達 Mürren 米倫', city: '米倫', cat: 'spot', note: '村落拍攝', order: 1 },
-            { date: '2026-03-21', time: '12:00', title: '雪朗峰 Schilthorn', city: '米倫', cat: 'spot', note: '決策點：雲多則留在米倫', order: 2 },
+            { date: '2026-03-20', time: '14:30', title: '勞特布龍嫩 瀑布谷', city: '勞特布龍嫩', cat: 'spot', note: '施陶巴赫瀑布', order: 2 },
+            { date: '2026-03-20', time: '17:30', title: 'Wengen 溫根小鎮', city: '溫根', cat: 'spot', order: 3 },
+            // Day 4
+            { date: '2026-03-21', time: '10:00', title: 'Mürren 米倫村落', city: '米倫', cat: 'spot', note: '高原小鎮拍攝', order: 1 },
+            { date: '2026-03-21', time: '12:00', title: '雪朗峰 Schilthorn', city: '米倫', cat: 'spot', note: '雲多則留在米倫', order: 2 },
             { date: '2026-03-21', time: '17:00', title: 'Lauterbrunnen 黃昏逆光', city: '勞特布龍嫩', cat: 'spot', order: 3 },
-
-            { date: '2026-03-22', time: '10:30', title: '抵達琉森 Luzern', city: '琉森', cat: 'spot', note: '黃金列車系統', order: 1 },
-            { date: '2026-03-22', time: '14:00', title: '垂死獅子像 & 老城', city: '琉森', cat: 'spot', order: 2 },
+            // Day 5
+            { date: '2026-03-22', time: '10:30', title: '抵達琉森 Luzern', city: '琉森', cat: 'spot', note: '卡貝爾橋 & 老城', order: 1 },
+            { date: '2026-03-22', time: '14:00', title: '垂死獅子像', city: '琉森', cat: 'spot', order: 2 },
             { date: '2026-03-22', time: '17:30', title: '因特拉肯河岸藍調', city: '因特拉肯', cat: 'spot', order: 3 },
-
+            // Day 6
             { date: '2026-03-23', time: '13:30', title: '抵達米蘭 Milano Centrale', city: '米蘭', cat: 'transport', order: 1 },
             { date: '2026-03-23', time: '15:30', title: 'Navigli Grande 大運河區', city: '米蘭', cat: 'spot', order: 2 },
-
+            // Day 7
             { date: '2026-03-24', time: '09:30', title: '米蘭主教座堂 Duomo', city: '米蘭', cat: 'spot', order: 1 },
-            { date: '2026-03-24', time: '14:00', title: '拱廊 & 精品購物', city: '米蘭', cat: 'spot', order: 2 },
-
+            { date: '2026-03-24', time: '14:00', title: '維托里奧拱廊 & 精品購物', city: '米蘭', cat: 'spot', order: 2 },
+            // Day 8
             { date: '2026-03-25', time: '16:00', title: '抵達 Zermatt 策馬特', city: '策馬特', cat: 'transport', order: 1 },
-            { date: '2026-03-25', time: '16:30', title: '小鎮街景 & 初見峰', city: '策馬特', cat: 'spot', order: 2 },
-
-            { date: '2026-03-26', time: '05:45', title: '馬特洪峰日出拍攝', city: '策馬特', cat: 'spot', order: 1 },
-            { date: '2026-03-26', time: '09:30', title: '教堂橋 & 老村 Hinterdorf', city: '策馬特', cat: 'spot', order: 2 },
-
+            { date: '2026-03-25', time: '16:30', title: '策馬特街景 & 初見峰', city: '策馬特', cat: 'spot', order: 2 },
+            // Day 9
+            { date: '2026-03-26', time: '05:45', title: '馬特洪峰日出', city: '策馬特', cat: 'spot', order: 1 },
+            { date: '2026-03-26', time: '09:30', title: '教堂橋 & 老村散拍', city: '策馬特', cat: 'spot', order: 2 },
+            // Day 10
             { date: '2026-03-27', time: '09:30', title: 'Gornergrat 觀景台', city: '策馬特', cat: 'spot', order: 1 },
             { date: '2026-03-27', time: '12:00', title: 'Riffelsee 倒影湖拍攝', city: '策馬特', cat: 'spot', order: 2 },
-
-            { date: '2026-03-28', time: '09:30', title: 'Sunnegga 倒影湖', city: '策馬特', cat: 'spot', order: 1 },
+            // Day 11
+            { date: '2026-03-28', time: '09:30', title: 'Sunnegga 蘇內加', city: '策馬特', cat: 'spot', order: 1 },
             { date: '2026-03-28', time: '12:00', title: 'Findeln 芬德倫山村', city: '策馬特', cat: 'spot', order: 2 },
-
-            { date: '2026-03-29', time: '09:00', title: '策馬特備用日', city: '策馬特', cat: 'spot', note: '自由補拍/休息', order: 1 },
-
+            // Day 12
+            { date: '2026-03-29', time: '09:00', title: '策馬特備用日 / 休息', city: '策馬特', cat: 'spot', order: 1 },
+            // Day 13
             { date: '2026-03-30', time: '12:00', title: '抵達蘇黎世機場', city: '蘇黎世', cat: 'transport', order: 1 },
             { date: '2026-03-30', time: '15:30', title: '蘇黎世起飛回程 (EK0088)', city: '蘇黎世', cat: 'flight', order: 2 }
         ];
 
-        // --- 授權與同步 ---
+        // --- 啟動與雲端同步 ---
         async function startApp() {
-            // 超時保險：如果連線超過 5 秒，強制隱藏轉圈圈
-            setTimeout(() => {
-                const spinner = document.getElementById('loading-spinner');
-                if (spinner) spinner.classList.add('hidden');
-            }, 5000);
+            // 超時保險：如果身份驗證超過 3.5 秒沒結果，強制進入渲染
+            const failSafe = setTimeout(() => {
+                document.getElementById('loading-spinner').classList.add('hidden');
+                render();
+            }, 3500);
 
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -209,20 +210,26 @@
                 } else {
                     await signInAnonymously(auth);
                 }
-                onAuthStateChanged(auth, (user) => { if (user) initRealtimeSync(); });
+                onAuthStateChanged(auth, (user) => { 
+                    if (user) {
+                        clearTimeout(failSafe);
+                        initRealtimeSync(); 
+                    }
+                });
             } catch (err) {
-                console.error("Auth Error:", err);
+                console.error("Auth failed:", err);
                 document.getElementById('loading-spinner').classList.add('hidden');
+                render();
             }
         }
 
         function initRealtimeSync() {
             const publicPath = (coll) => collection(db, 'artifacts', appId, 'public', 'data', coll);
-            const errorFn = (err) => { console.error("Sync Error:", err); document.getElementById('loading-spinner').classList.add('hidden'); };
+            const errorFn = (err) => { console.error("Firebase Sync Error:", err); document.getElementById('loading-spinner').classList.add('hidden'); };
 
             onSnapshot(publicPath('schedules'), (snap) => {
                 if (snap.empty) {
-                    INITIAL_DATA_PLANS.forEach(i => addDoc(publicPath('schedules'), { ...i, done: false, timestamp: Date.now() }));
+                    INITIAL_SCHEDULES.forEach(i => addDoc(publicPath('schedules'), { ...i, done: false, timestamp: Date.now() }));
                 } else {
                     schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     render();
@@ -237,7 +244,7 @@
             onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'main'), (d) => { if (d.exists()) { appMainTitle = d.data().title || "SWISS 2026"; dailyMetadata = d.data().dailyMeta || {}; render(); } }, errorFn);
         }
 
-        // --- 渲染核心 ---
+        // --- 介面渲染主函數 ---
         function render() {
             const container = document.getElementById('app-content');
             if (!container) return;
@@ -245,23 +252,23 @@
             document.getElementById('app-main-title').value = appMainTitle;
 
             if (currentTab === 'schedule') {
-                const meta = dailyMetadata[currentActiveDay] || { title: '未命名行程主題', location: '瑞士', weather: '--', rain: '--', visibility: '--', fog: '--' };
+                const meta = dailyMetadata[currentActiveDay] || { title: '未命名行程主題', location: '瑞士', weather: '--', rain: '--', visibility: '--' };
                 container.innerHTML = `
                     <div class="bg-blue-500 rounded-[2.5rem] p-6 text-white shadow-xl flex justify-between items-center mb-8 relative overflow-hidden animate-fade-in">
                         <div class="z-10 flex-1">
-                            <div class="flex items-center gap-2 mb-2"><i data-lucide="map-pin" class="w-4 h-4 opacity-60"></i><span class="text-[10px] font-black opacity-60 tracking-widest">${meta.location} Weather</span></div>
+                            <div class="flex items-center gap-2 mb-2"><i data-lucide="map-pin" class="w-4 h-4 opacity-60"></i><span class="text-[10px] font-black uppercase tracking-widest opacity-60">${meta.location} Weather</span></div>
                             <h3 class="text-2xl font-black mb-1">${meta.weather}</h3>
                             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-bold opacity-80"><span>降雨: ${meta.rain}</span><span>能見度: ${meta.visibility}</span></div>
                         </div>
                         <i data-lucide="sun" class="w-16 h-16 opacity-30"></i>
                     </div>
-                    <div class="bg-white/40 rounded-[2.5rem] p-6 mb-6 border-2 border-white shadow-inner">
-                        <p class="text-[10px] font-black uppercase text-morandi mb-3">Daily Minutes / 分鐘行程表</p>
+                    <div class="bg-white/40 rounded-[2.5rem] p-6 mb-6 border-2 border-white shadow-inner animate-fade-in">
+                        <p class="text-[10px] font-black uppercase text-morandi mb-3 tracking-widest">Daily Minutes / 定稿版總表</p>
                         <div class="space-y-3">${renderSummaryTable()}</div>
                     </div>
-                    <div class="mb-8 px-4 py-5 bg-white/30 rounded-3xl border-b-[6px] border-morandi shadow-lg">
+                    <div class="mb-8 px-4 py-5 bg-white/30 rounded-3xl border-b-[6px] border-morandi shadow-lg animate-fade-in">
                         <p class="text-[9px] font-black uppercase text-morandi opacity-60 mb-1">Today's Journey Topic</p>
-                        <input onchange="askConfirm(() => saveDailyTitle(this.value), '更新主題', '確定更換今日主題？')" class="bg-transparent border-none text-morandi font-black text-2xl outline-none w-full" value="${meta.title}">
+                        <input onchange="askConfirm(() => saveDailyTitle(this.value), '儲存主題', '確定更改今日主題？')" class="bg-transparent border-none text-morandi font-black text-2xl outline-none w-full" value="${meta.title}">
                     </div>
                     <div class="flex gap-4 overflow-x-auto pb-6 no-scrollbar touch-pan-x" id="date-scroll">${renderDateButtons()}</div>
                     <div class="relative pl-14 space-y-10 mt-10" id="schedule-container">
@@ -279,13 +286,13 @@
             return SWISS_DAYS.map(day => `
                 <button onclick="selectDay('${day.id}')" class="flex-shrink-0 flex flex-col items-center justify-center min-w-[75px] h-[75px] rounded-[2.2rem] transition-all border-[3.5px] ${day.id === currentActiveDay ? 'date-active' : 'bg-white/40 text-[#1C1912]/40 border-transparent'}">
                     <span class="text-[9px] uppercase mb-1 opacity-70">${day.label}</span>
-                    <span class="text-base font-bold font-mono">${day.date}</span>
+                    <span class="text-base font-bold">${day.date}</span>
                 </button>`).join('');
         }
 
         function renderSummaryTable() {
             const items = schedules.filter(s => s.date === currentActiveDay).sort((a,b) => a.time.localeCompare(b.time));
-            if (items.length === 0) return `<p class="text-xs italic opacity-30 text-center py-4">本日行程計畫中...</p>`;
+            if (items.length === 0) return `<p class="text-xs italic opacity-30 text-center py-4">本日行程同步中...</p>`;
             return items.map(item => `
                 <div class="flex items-center gap-4 text-xs font-bold border-b border-black/5 pb-2 uppercase">
                     <span class="text-morandi font-mono w-10 shrink-0">${item.time}</span>
@@ -301,8 +308,8 @@
                 const isLastItem = idx === items.length - 1;
                 return `
                     <div class="relative animate-fade-in group">
-                        <div onclick="toggleSchedule('${item.id}')" class="absolute -left-[3.25rem] top-8 z-20 w-12 h-12 rounded-full border-[5px] border-[#CFC8B3] flex items-center justify-center shadow-xl transition-all ${item.done ? 'bg-green-500' : 'bg-white'}">
-                            ${item.done ? '<i data-lucide="check" class="text-white w-6 h-6 stroke-[4px]"></i>' : (isRunnerHere ? '<span class="text-2xl running-man">🏃</span>' : '<div class="w-3 h-3 rounded-full bg-black/10"></div>')}
+                        <div onclick="toggleSchedule('${item.id}')" class="absolute -left-[3.25rem] top-8 z-20 w-12 h-12 rounded-full border-[5px] border-[#CFC8B3] flex items-center justify-center shadow-xl transition-all ${item.done ? 'bg-green-500 text-white' : 'bg-white'}">
+                            ${item.done ? '<i data-lucide="check" class="w-6 h-6 stroke-[4px]"></i>' : (isRunnerHere ? '<span class="text-2xl running-man">🏃</span>' : '<div class="w-3 h-3 rounded-full bg-black/10"></div>')}
                         </div>
                         <div onclick="openEditScheduleModal('${item.id}')" class="bg-white rounded-[2.5rem] shadow-[12px_12px_0px_rgba(28,25,18,0.1)] journal-card p-6 relative active:scale-95 transition-all ${item.done ? 'item-done' : 'cursor-pointer'}">
                             <div class="absolute top-0 right-0 w-4 h-full rounded-r-[1.8rem] ${getCatColor(item.cat)}"></div>
@@ -316,58 +323,46 @@
                                     <h3 class="text-xl font-black text-[#1C1912] leading-tight flex-1 pr-4">${item.title}</h3>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    ${item.photo1 ? `<img src="${item.photo1}" class="aspect-square w-full rounded-2xl object-cover journal-card">` : `<div class="aspect-square bg-gray-100 rounded-2xl border-2 border-dashed border-black/5 flex items-center justify-center cursor-pointer active:bg-gray-200" onclick="event.stopPropagation(); triggerPhotoUpload('${item.id}', 1)"><i data-lucide="camera" class="text-black/10 w-6 h-6"></i></div>`}
-                                    ${item.photo2 ? `<img src="${item.photo2}" class="aspect-square w-full rounded-2xl object-cover journal-card">` : `<div class="aspect-square bg-gray-100 rounded-2xl border-2 border-dashed border-black/5 flex items-center justify-center opacity-40 cursor-pointer active:bg-gray-200" onclick="event.stopPropagation(); triggerPhotoUpload('${item.id}', 2)"><i data-lucide="plus" class="text-black/10 w-6 h-6"></i></div>`}
+                                    ${item.photo1 ? `<img src="${item.photo1}" class="aspect-square w-full rounded-2xl object-cover journal-card shadow-sm">` : `<div class="aspect-square bg-gray-100 rounded-2xl border-2 border-dashed border-black/5 flex items-center justify-center cursor-pointer active:bg-gray-200" onclick="event.stopPropagation(); triggerPhotoUpload('${item.id}', 1)"><i data-lucide="camera" class="text-black/10 w-6 h-6"></i></div>`}
+                                    ${item.photo2 ? `<img src="${item.photo2}" class="aspect-square w-full rounded-2xl object-cover journal-card shadow-sm">` : `<div class="aspect-square bg-gray-100 rounded-2xl border-2 border-dashed border-black/5 flex items-center justify-center opacity-40 cursor-pointer active:bg-gray-200" onclick="event.stopPropagation(); triggerPhotoUpload('${item.id}', 2)"><i data-lucide="plus" class="text-black/10 w-6 h-6"></i></div>`}
                                 </div>
                                 ${item.note ? `<p class="text-[12px] text-[#1C1912]/60 font-bold italic border-l-[4px] border-morandi/20 pl-4 py-1 leading-relaxed bg-black/5 rounded-r-xl">“ ${item.note} ”</p>` : ''}
                             </div>
                         </div>
-                        ${!isLastItem ? `<div class="ml-4 my-6 p-4 border-l-4 border-dashed border-morandi bg-white/20 rounded-r-2xl text-[10px] font-bold text-dark-green/80 uppercase tracking-tight">AI 交通助手：建議使用 Google Maps 實時導航。</div>` : ''}
-                        <input type="file" id="file-${item.id}-1" class="hidden" accept="image/*" onchange="uploadPhoto('${item.id}', 1, this)">
-                        <input type="file" id="file-${item.id}-2" class="hidden" accept="image/*" onchange="uploadPhoto('${item.id}', 2, this)">
+                        ${!isLastItem ? `<div class="ml-4 my-6 p-4 border-l-4 border-dashed border-morandi bg-white/20 rounded-r-2xl text-[10px] font-bold text-dark-green/80 uppercase">AI 實時助手：建議查看 SBB 以獲得正確月台資訊。</div>` : ''}
+                        <input type="file" id="file-${item.id}-1" class="hidden" accept="image/jpeg,image/png" onchange="uploadPhoto('${item.id}', 1, this)">
+                        <input type="file" id="file-${item.id}-2" class="hidden" accept="image/jpeg,image/png" onchange="uploadPhoto('${item.id}', 2, this)">
                     </div>`;
             }).join('');
         }
 
+        // --- 憑證與分頁渲染 ---
         function renderBookingPage(container) {
             container.innerHTML = `
                 <div class="space-y-10 animate-fade-in pb-20 px-1">
-                    <h2 class="text-4xl font-black text-dark-green flex items-center gap-4 px-2 tracking-tighter"><i data-lucide="layers" class="text-morandi"></i> 航班憑證</h2>
-                    <!-- 去程 -->
+                    <h2 class="text-4xl font-black text-dark-green flex items-center gap-4 px-3 tracking-tighter"><i data-lucide="layers" class="text-morandi"></i> 航班憑證</h2>
                     <div class="bg-white rounded-[3rem] shadow-2xl border-b-[15px] border-[#AA1D24] mb-8 overflow-hidden journal-card">
                         <div class="bg-[#AA1D24] p-8 text-white flex justify-between items-center font-black italic uppercase leading-none">
                             <div><p class="text-xl tracking-tighter">阿聯酋 • 去程</p><p class="text-[10px] opacity-70 mt-1 uppercase">EK0387 / EK0087</p></div>
                             <div class="bg-black/20 px-4 py-2 rounded-2xl border border-white/20 text-sm">3/18 OK</div>
                         </div>
-                        <div class="p-10 space-y-8 font-mono">
-                            <div class="flex justify-between items-center text-[#1C1912]">
-                                <div><p class="text-4xl font-black">TPE</p><p class="text-sm font-bold opacity-60">00:20</p></div>
-                                <i data-lucide="arrow-right"></i>
-                                <div><p class="text-4xl font-black opacity-40">DXB</p><p class="text-sm">06:10</p></div>
-                            </div>
-                            <div class="flex justify-between items-center pt-2">
-                                <div class="text-center opacity-40"><p class="text-4xl">DXB</p><p class="text-sm">08:25</p></div>
-                                <i data-lucide="arrow-right"></i>
-                                <div class="text-center text-[#1C1912]"><p class="text-4xl font-black">ZRH</p><p class="text-sm text-morandi font-bold">12:25</p></div>
-                            </div>
-                        </div>
+                        <div class="p-10 space-y-8 font-mono"><div class="flex justify-between items-center text-[#1C1912]"><div><p class="text-4xl font-black font-mono">TPE</p><p class="text-sm font-bold opacity-60">00:20</p></div><i data-lucide="arrow-right"></i><div><p class="text-4xl font-black font-mono text-morandi">ZRH</p><p class="text-sm font-bold opacity-60">12:25</p></div></div></div>
                     </div>
-                    <!-- 回程航班 (EK0088 / EK0366) -->
                     <div class="bg-white rounded-[3rem] shadow-2xl border-b-[15px] border-dark-green overflow-hidden journal-card opacity-90">
                         <div class="bg-dark-green p-8 text-white flex justify-between items-center font-black italic uppercase leading-none">
-                            <div><p class="text-xl tracking-tighter">阿聯酋 • 回程</p><p class="text-[10px] opacity-70 mt-1 uppercase">EK0088 / EK0366</p></div>
-                            <div class="bg-white/10 px-4 py-2 rounded-2xl border border-white/10 text-sm font-mono uppercase">Confirmed</div>
+                            <div><p class="text-xl tracking-tighter font-black">阿聯酋 • 回程</p><p class="text-[10px] opacity-70 mt-1 uppercase">EK0088 / EK0366</p></div>
+                            <div class="bg-white/10 px-4 py-2 rounded-2xl border border-white/10 text-sm font-mono uppercase tracking-widest">Confirmed</div>
                         </div>
                         <div class="p-10 space-y-12 font-mono">
                             <div class="flex justify-between items-center border-b border-dashed pb-6">
-                                <div class="text-center text-[#1C1912]"><p class="text-4xl font-black">ZRH</p><p class="text-sm text-morandi font-bold mt-1">15:30</p></div>
+                                <div class="text-center text-[#1C1912] font-black"><p class="text-4xl font-mono">ZRH</p><p class="text-sm text-morandi font-bold mt-1">15:30</p></div>
                                 <div class="flex flex-col items-center opacity-30 font-black"><i data-lucide="arrow-right"></i><span class="text-[10px]">6h 15m</span></div>
-                                <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm">23:45</p></div>
+                                <div class="text-center opacity-40 font-black"><p class="text-4xl font-mono">DXB</p><p class="text-sm">23:45</p></div>
                             </div>
                             <div class="flex justify-between items-center pt-4">
-                                <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm">03:45</p></div>
+                                <div class="text-center opacity-40 font-black"><p class="text-4xl font-mono">DXB</p><p class="text-sm">03:45</p></div>
                                 <div class="flex flex-col items-center opacity-30 font-black"><i data-lucide="arrow-right"></i><span class="text-[10px]">8h 25m</span></div>
-                                <div class="text-center text-[#1C1912]"><p class="text-4xl font-black">TPE</p><p class="text-sm text-morandi font-bold mt-1 uppercase">16:10</p></div>
+                                <div class="text-center text-[#1C1912] font-black"><p class="text-4xl font-mono">TPE</p><p class="text-sm text-morandi font-bold mt-1">16:10</p></div>
                             </div>
                         </div>
                     </div>
@@ -392,10 +387,7 @@
                         ${expenses.map(e => `
                             <div class="bg-white rounded-[2.5rem] p-8 shadow-xl journal-card flex justify-between items-center relative">
                                 <div><p class="text-2xl font-black leading-tight">${e.title}</p><p class="text-[10px] font-black text-morandi uppercase mt-1">@${e.user}</p></div>
-                                <div class="text-right flex items-center gap-6">
-                                    <p class="text-2xl font-black text-morandi font-mono leading-none">${e.currency} ${e.amount}</p>
-                                    <button onclick="deleteExpense('${e.id}')" class="text-dark-green transition-all active:scale-75"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                </div>
+                                <div class="text-right flex items-center gap-6 font-mono font-black"><p class="text-2xl text-morandi leading-none">${e.currency} ${e.amount}</p><button onclick="deleteExpense('${e.id}')" class="text-dark-green active:scale-75"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>
                             </div>`).join('')}
                     </div>
                 </div>`;
@@ -405,13 +397,13 @@
             container.innerHTML = `
                 <div class="space-y-12 animate-fade-in pb-48 px-2">
                     <div class="bg-white rounded-[3rem] p-8 journal-card flex justify-between items-center shadow-xl active:scale-95 cursor-pointer" onclick="openMemberEditor()">
-                        <div class="flex items-center gap-4"><div class="w-12 h-12 bg-morandi/10 rounded-2xl flex items-center justify-center text-morandi"><i data-lucide="users"></i></div><div><p class="font-black text-xl text-dark-green uppercase leading-none mt-1">旅伴管理</p><p class="text-xs opacity-40 font-bold mt-1">點擊編輯旅伴名單</p></div></div>
+                        <div class="flex items-center gap-4"><div class="w-12 h-12 bg-morandi/10 rounded-2xl flex items-center justify-center text-morandi"><i data-lucide="users"></i></div><div><p class="font-black text-xl text-dark-green uppercase">Partner Management</p><p class="text-xs opacity-40 font-bold">在此編輯旅伴名單</p></div></div>
                         <i data-lucide="chevron-right" class="text-morandi opacity-40"></i>
                     </div>
                     <div class="space-y-6">
-                        <h2 class="text-3xl font-black text-dark-green tracking-tighter px-2 flex items-center gap-3"><i data-lucide="check-square" class="text-morandi"></i> 準備清單</h2>
+                        <h2 class="text-3xl font-black text-dark-green tracking-tighter px-3 flex items-center gap-3"><i data-lucide="check-square" class="text-morandi"></i> 準備清單</h2>
                         ${todos.map(t => `<div onclick="toggleTodo('${t.id}')" class="bg-white rounded-[2.5rem] p-8 flex items-center gap-6 shadow-xl journal-card transition-all ${t.done ? 'opacity-40 grayscale' : 'active:scale-95'}">
-                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-4 ${t.done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200'}">${t.done ? '<i data-lucide="check" class="w-8 h-8 stroke-[4px]"></i>' : ''}</div>
+                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-4 ${t.done ? 'bg-green-500 border-green-500 text-white shadow-lg' : 'border-gray-200 shadow-inner'}">${t.done ? '<i data-lucide="check" class="w-8 h-8 stroke-[4px]"></i>' : ''}</div>
                             <span class="text-2xl font-black flex-1 ${t.done ? 'line-through text-gray-400' : 'text-[#1C1912]'}">${t.text}</span>
                         </div>`).join('')}
                     </div>
@@ -423,22 +415,17 @@
                 <div class="flex flex-col h-[70vh] animate-fade-in px-2">
                     <h2 class="text-4xl font-black mb-8 text-dark-green tracking-tighter px-2 flex items-center gap-3"><i data-lucide="message-square" class="text-morandi"></i> 成員共享日記</h2>
                     <div class="flex-1 overflow-y-auto space-y-6 px-2 mb-4 no-scrollbar">${chatMessages.map(m => `<div class="flex flex-col ${m.user === APP_USER ? 'items-end' : 'items-start'}"><div class="flex items-center gap-2 mb-1 px-2"><span class="text-[10px] opacity-40 font-black">@${m.user}</span></div><div class="${m.user === APP_USER ? 'chat-bubble-me shadow-md' : 'bg-white journal-card'} p-5 font-bold max-w-[85%] text-lg">${m.text}</div></div>`).join('')}</div>
-                    <div class="bg-white rounded-[2.5rem] p-4 border-[3.5px] border-[#1C1912] shadow-2xl flex items-center gap-3">
-                        <input id="chat-input" class="flex-1 bg-transparent outline-none font-bold px-4 h-12" placeholder="記下心情...">
-                        <button onclick="sendChat()" class="bg-morandi text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-75"><i data-lucide="send" class="w-5 h-5"></i></button>
-                    </div>
+                    <div class="bg-white rounded-[2.5rem] p-4 border-[3.5px] border-[#1C1912] shadow-2xl flex items-center gap-3"><input id="chat-input" class="flex-1 bg-transparent outline-none font-bold px-4 h-12" placeholder="留下今天的旅行點滴..."><button onclick="sendChat()" class="bg-morandi text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-75"><i data-lucide="send" class="w-5 h-5"></i></button></div>
                 </div>`;
         }
 
-        // --- 功能函數 ---
+        // --- 核心邏輯功能 ---
         async function submitNewMember() {
-            const nameEl = document.getElementById('new-member-name');
-            const name = nameEl?.value;
+            const name = document.getElementById('new-member-name')?.value;
             if(!name || members.includes(name)) return;
             const newList = [...members, name];
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', 'list'), { list: newList });
-            nameEl.value = '';
-            openMemberEditor(); // 刷新
+            openMemberEditor(); // 重新渲染 Modal 以刷新清單
         }
 
         function triggerPhotoUpload(itemId, slot) {
@@ -458,15 +445,64 @@
             reader.readAsDataURL(file);
         }
 
-        // --- 全域資料操作 ---
+        function openMemberEditor() {
+            const modal = document.getElementById('modal-overlay');
+            const body = document.getElementById('modal-body');
+            document.getElementById('modal-title').innerText = "旅伴名單管理";
+            modal.classList.remove('hidden');
+
+            body.innerHTML = `
+                <div class="space-y-6 animate-fade-in">
+                    <div class="grid grid-cols-1 gap-3 max-h-[40vh] overflow-y-auto no-scrollbar">${members.map((m, idx) => `
+                        <div class="bg-white p-5 rounded-2xl border-2 border-black/5 flex justify-between items-center group shadow-sm transition-all">
+                            <input type="text" onchange="updateMemberName(${idx}, this.value)" class="font-black text-lg bg-transparent outline-none flex-1" value="${m}">
+                            ${m !== APP_USER ? `<button onclick="removeMember(${idx})" class="text-dark-green active:scale-75"><i data-lucide="x" class="w-5 h-5"></i></button>` : '<span class="text-[8px] font-black text-morandi uppercase tracking-widest">Owner</span>'}
+                        </div>`).join('')}</div>
+                    <div class="flex gap-3"><input id="new-member-name" placeholder="輸入名字..." class="flex-1 p-5 rounded-2xl border-4 border-gray-100 font-black outline-none focus:border-morandi"><button onclick="submitNewMember()" class="bg-morandi text-white px-8 rounded-2xl font-black active:scale-95 shadow-lg shadow-morandi/20">+ 新增</button></div>
+                    <button onclick="closeModal()" class="w-full py-6 bg-dark-green text-white rounded-[2rem] font-black mt-4 shadow-xl active:scale-95 transition-all">儲存並完成</button>
+                </div>`;
+            lucide.createIcons();
+        }
+
+        function openAddModal() {
+            const modal = document.getElementById('modal-overlay');
+            const body = document.getElementById('modal-body');
+            document.getElementById('modal-title').innerText = currentTab === 'schedule' ? "新增冒險行程" : currentTab === 'expense' ? "紀錄消費支出" : "新增清單項目";
+            modal.classList.remove('hidden');
+
+            if (currentTab === 'schedule') {
+                body.innerHTML = `
+                    <div class="space-y-5 animate-fade-in">
+                        <div class="grid grid-cols-2 gap-4"><input id="add-time" type="time" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none" value="10:00"><input id="add-city" placeholder="城市名稱" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"></div>
+                        <input id="add-title" placeholder="景點或項目" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
+                        <button onclick="submitSchedule()" class="w-full bg-morandi text-white py-8 rounded-[3.5rem] font-black text-2xl uppercase tracking-widest shadow-2xl active:scale-95 border-b-[8px] border-morandi-dark/20">Confirm Save</button>
+                    </div>`;
+            } else if (currentTab === 'expense') {
+                body.innerHTML = `
+                    <div class="space-y-5">
+                        <select id="ex-user" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">${members.map(m => `<option value="${m}">${m}</option>`).join('')}</select>
+                        <input id="ex-title" placeholder="支出內容" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
+                        <div class="grid grid-cols-2 gap-4"><input id="ex-amount" type="number" placeholder="金額" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><select id="ex-currency" class="p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><option value="CHF">CHF</option><option value="TWD">TWD</option><option value="EUR">EUR</option></select></div>
+                        <button onclick="submitExpense()" class="w-full bg-morandi text-white py-8 rounded-[3.5rem] font-black text-2xl uppercase shadow-2xl">Confirm Record</button>
+                    </div>`;
+            } else {
+                body.innerHTML = `<input id="todo-text" placeholder="輸入清單內容..." class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><button onclick="submitTodo()" class="w-full bg-morandi text-white py-8 rounded-[3.5rem] font-black text-2xl mt-4">Confirm Add</button>`;
+            }
+            lucide.createIcons();
+        }
+
+        // --- 全域資料操作掛載 ---
+        async function submitSchedule() { const title = document.getElementById('add-title')?.value; if(!title) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedules'), { date: currentActiveDay, time: document.getElementById('add-time').value, city: document.getElementById('add-city').value, title, cat: 'spot', done: false, timestamp: Date.now() }); closeModal(); }
+        async function submitExpense() { const user = document.getElementById('ex-user')?.value; const title = document.getElementById('ex-title')?.value; const amount = parseFloat(document.getElementById('ex-amount')?.value); if(!title || isNaN(amount)) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'), { title, amount, currency: document.getElementById('ex-currency').value, user, timestamp: Date.now() }); closeModal(); }
+        async function submitTodo() { const text = document.getElementById('todo-text')?.value; if(!text) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'todos'), { text, done: false, timestamp: Date.now() }); closeModal(); }
         async function toggleSchedule(id) { const s = schedules.find(x => x.id === id); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', id), { done: !s.done }); }
         async function toggleTodo(id) { const t = todos.find(x => x.id === id); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'todos', id), { done: !t.done }); }
-        async function deleteSchedule(id) { askConfirm(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', id)); }, "刪除行程", "確認刪除？"); }
-        async function deleteExpense(id) { askConfirm(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id)); }, "刪除紀錄", "確認刪除？"); }
-        async function removeMember(idx) { askConfirm(async () => { const newList = [...members]; newList.splice(idx,1); await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', 'list'), { list: newList }); openMemberEditor(); }, "移除成員", "確認移除？"); }
+        async function deleteSchedule(id) { askConfirm(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', id)); }, "刪除行程", "確定要永久刪除此項行程嗎？"); }
+        async function deleteExpense(id) { askConfirm(async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id)); }, "刪除支出紀錄", "確定刪除此筆記帳嗎？"); }
+        async function removeMember(idx) { askConfirm(async () => { const newList = [...members]; newList.splice(idx,1); await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', 'list'), { list: newList }); openMemberEditor(); }, "移除旅伴", "確定將此位成員從清單移除嗎？"); }
         function saveAppTitle(val) { setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'main'), { title: val }, { merge: true }); }
         function saveDailyTitle(val) { const newMeta = {...dailyMetadata}; if(!newMeta[currentActiveDay]) newMeta[currentActiveDay] = {}; newMeta[currentActiveDay].title = val; setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'main'), { dailyMeta: newMeta }, { merge: true }); }
-        function openEditScheduleModal(id) { const item = schedules.find(s => s.id == id); if (!item) return; const modal = document.getElementById('modal-overlay'); document.getElementById('modal-title').innerText = "行程細節"; modal.classList.remove('hidden'); document.getElementById('modal-body').innerHTML = `<div class="space-y-4"><input id="edit-title" value="${item.title}" class="w-full p-5 rounded-2xl border-4 border-gray-100 font-black outline-none"><textarea id="edit-details" rows="5" class="w-full p-5 rounded-2xl border-4 border-gray-100 font-black placeholder-gray-300" placeholder="詳細備註...">${item.details || ''}</textarea><button onclick="saveEditSchedule('${id}')" class="w-full bg-dark-green text-white py-6 rounded-2xl font-black">更新並儲存</button></div>`; }
+        function openEditScheduleModal(id) { const item = schedules.find(s => s.id == id); if (!item) return; const modal = document.getElementById('modal-overlay'); document.getElementById('modal-title').innerText = "編輯行程詳情"; modal.classList.remove('hidden'); document.getElementById('modal-body').innerHTML = `<div class="space-y-4 animate-fade-in"><input id="edit-title" value="${item.title}" class="w-full p-6 rounded-2xl border-4 border-gray-100 font-black outline-none"><textarea id="edit-details" rows="5" class="w-full p-6 rounded-2xl border-4 border-gray-100 font-black placeholder-gray-300" placeholder="輸入詳細注意事項...">${item.details || ''}</textarea><button onclick="saveEditSchedule('${id}')" class="w-full bg-dark-green text-white py-8 rounded-[2rem] font-black shadow-xl active:scale-95 uppercase tracking-[0.4em]">Update Data</button></div>`; }
         async function saveEditSchedule(id) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', id), { title: document.getElementById('edit-title').value, details: document.getElementById('edit-details').value }); closeModal(); }
 
         // --- 通用輔助 ---
@@ -478,68 +514,9 @@
         function updateNavStyles() { document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('text-[#8E9775]', 'scale-110'); btn.classList.add('text-white/30'); }); const activeBtn = document.getElementById(`btn-${currentTab}`); if (activeBtn) { activeBtn.classList.replace('text-white/30', 'text-[#8E9775]'); activeBtn.classList.add('scale-110'); } }
         function getCatColor(cat) { return { spot: 'bg-[#A7B09E]', transport: 'bg-[#9BAEBC]', hotel: 'bg-[#E0D8C3]', flight: 'bg-dark-green' }[cat] || 'bg-gray-300'; }
         async function sendChat() { const input = document.getElementById('chat-input'); if(!input.value) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'chat'), { user: APP_USER, text: input.value, timestamp: Date.now() }); input.value = ''; }
-        function openMemberEditor() {
-            const modal = document.getElementById('modal-overlay');
-            document.getElementById('modal-title').innerText = "旅伴名單管理";
-            modal.classList.remove('hidden');
-            document.getElementById('modal-body').innerHTML = `
-                <div class="space-y-6">
-                    <div class="grid grid-cols-1 gap-3 max-h-[40vh] overflow-y-auto no-scrollbar">${members.map((m, idx) => `
-                        <div class="bg-white p-5 rounded-2xl border-2 border-black/5 flex justify-between items-center shadow-sm">
-                            <input type="text" onchange="updateMemberName(${idx}, this.value)" class="font-black text-lg bg-transparent outline-none flex-1" value="${m}">
-                            ${m !== APP_USER ? `<button onclick="removeMember(${idx})" class="text-dark-green p-2 active:scale-75"><i data-lucide="x" class="w-5 h-5"></i></button>` : '<span class="text-[8px] font-black text-morandi uppercase">Owner</span>'}
-                        </div>`).join('')}</div>
-                    <div class="flex gap-3"><input id="new-member-name" placeholder="名字..." class="flex-1 p-5 rounded-2xl border-4 border-gray-100 font-black outline-none"><button onclick="submitNewMember()" class="bg-morandi text-white px-8 rounded-2xl font-black">新增</button></div>
-                    <button onclick="closeModal()" class="w-full py-6 bg-dark-green text-white rounded-[2rem] font-black mt-4">儲存設定</button>
-                </div>`;
-            lucide.createIcons();
-        }
 
-        function openAddModal() {
-            const modal = document.getElementById('modal-overlay');
-            const body = document.getElementById('modal-body');
-            document.getElementById('modal-title').innerText = currentTab === 'schedule' ? "新增行程" : currentTab === 'expense' ? "紀錄支出" : "新增事項";
-            modal.classList.remove('hidden');
-
-            if (currentTab === 'schedule') {
-                body.innerHTML = `
-                    <div class="space-y-5">
-                        <div class="grid grid-cols-2 gap-4"><input id="add-time" type="time" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none" value="10:00"><input id="add-city" placeholder="城市" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"></div>
-                        <input id="add-title" placeholder="項目名稱" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
-                        <button onclick="submitSchedule()" class="w-full bg-morandi text-white py-8 rounded-[3.5rem] font-black text-2xl uppercase shadow-2xl">Confirm Save</button>
-                    </div>`;
-            } else if (currentTab === 'expense') {
-                body.innerHTML = `
-                    <div class="space-y-5">
-                        <select id="ex-user" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">${members.map(m => `<option value="${m}">${m}</option>`).join('')}</select>
-                        <input id="ex-title" placeholder="項目" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
-                        <div class="grid grid-cols-2 gap-4"><input id="ex-amount" type="number" placeholder="金額" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><select id="ex-currency" class="p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><option value="CHF">CHF</option><option value="TWD">TWD</option><option value="EUR">EUR</option></select></div>
-                        <button onclick="submitExpense()" class="w-full bg-morandi text-white py-8 rounded-[3.5rem] font-black text-2xl uppercase">Save Record</button>
-                    </div>`;
-            } else { body.innerHTML = `<input id="todo-text" placeholder="內容..." class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><button onclick="submitTodo()" class="w-full bg-morandi text-white py-8 rounded-[3.5rem] font-black text-2xl">Confirm</button>`; }
-            lucide.createIcons();
-        }
-
-        async function submitSchedule() {
-            const title = document.getElementById('add-title').value;
-            if(!title) return;
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedules'), {
-                date: currentActiveDay, time: document.getElementById('add-time').value, city: document.getElementById('add-city').value, title, cat: 'spot', done: false, timestamp: Date.now()
-            });
-            closeModal();
-        }
-        async function submitExpense() {
-            const title = document.getElementById('ex-title').value;
-            if(!title) return;
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'), { title, amount: parseFloat(document.getElementById('ex-amount').value), currency: document.getElementById('ex-currency').value, user: document.getElementById('ex-user').value, timestamp: Date.now() });
-            closeModal();
-        }
-        async function submitTodo() { if(!document.getElementById('todo-text').value) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'todos'), { text: document.getElementById('todo-text').value, done: false, timestamp: Date.now() }); closeModal(); }
-        function updateMemberName(idx, val) { if(val) members[idx] = val; }
-
-        // --- 全域綁定 ---
-        Object.assign(window, { switchTab, selectDay, toggleSchedule, deleteSchedule, deleteExpense, toggleTodo, openMemberEditor, updateMemberName, removeMember, submitNewMember, sendChat, saveDailyTitle, saveAppTitle, openAddModal, closeModal, submitSchedule, submitExpense, submitTodo, askConfirm, closeConfirmModal, triggerPhotoUpload, uploadPhoto, openEditScheduleModal, saveEditSchedule });
         window.onload = startApp;
+        Object.assign(window, { switchTab, selectDay, toggleSchedule, deleteSchedule, deleteExpense, toggleTodo, openMemberEditor, updateMemberName: (idx,v)=> { members[idx]=v; }, removeMember, submitNewMember, sendChat, saveDailyTitle, saveAppTitle, openAddModal, closeModal, submitSchedule, submitExpense, submitTodo, askConfirm, closeConfirmModal, triggerPhotoUpload, uploadPhoto, openEditScheduleModal, saveEditSchedule });
     </script>
 </body>
 </html>
