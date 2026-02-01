@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Swiss Diary 2026 - Flagship</title>
+    <title>Swiss Diary 2026 - Flagship v2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -15,14 +15,15 @@
         .animate-fade-in { animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .date-active { background-color: #3B82F6; color: white; border-color: white; transform: scale(1.1); font-weight: 900; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
         .item-done { opacity: 0.6; filter: grayscale(0.5); background-color: #E2E8F0 !important; }
-        .running-man { transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .running-man { transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); animation: bounce 0.6s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
         .chat-bubble { border-radius: 1.5rem; border-bottom-left-radius: 0.2rem; }
         .chat-bubble-me { border-radius: 1.5rem; border-bottom-right-radius: 0.2rem; background-color: #3B82F6; color: white; }
     </style>
 </head>
 <body class="min-h-screen pb-40 overflow-x-hidden select-none">
 
-    <!-- 頂部標題列 (標題可編輯) -->
+    <!-- 頂部標題列 -->
     <header class="sticky top-0 z-50 bg-[#CFC8B3]/95 backdrop-blur-xl px-6 py-10 flex justify-between items-center border-b-[3px] border-black/10 shadow-2xl">
         <div class="flex items-center gap-5">
             <div class="w-16 h-16 bg-[#1C1912] rounded-[2.2rem] flex items-center justify-center text-[#CFC8B3] shadow-xl rotate-3 border-4 border-white/10">
@@ -42,8 +43,8 @@
         <!-- 內容動態填充 -->
     </main>
 
-    <!-- 底部導覽列 (5個標籤) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-[#1C1912]/98 backdrop-blur-3xl px-2 py-6 flex justify-around items-center z-[60] rounded-t-[4rem] shadow-[0_-30px:100px_rgba(0,0,0,0.6)] border-t border-white/10 max-w-lg mx-auto">
+    <!-- 底部導覽列 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#1C1912]/98 backdrop-blur-3xl px-2 py-6 flex justify-around items-center z-[60] rounded-t-[4rem] shadow-[0_-30px_100px_rgba(0,0,0,0.6)] border-t border-white/10 max-w-lg mx-auto">
         <button onclick="switchTab('schedule')" class="nav-btn flex flex-col items-center gap-1.5 text-white/30 transition-all" id="btn-schedule">
             <i data-lucide="calendar" class="w-6 h-6"></i>
             <span class="text-[9px] font-black uppercase tracking-widest">行程</span>
@@ -78,17 +79,18 @@
     </div>
 
     <script>
-        // --- 1. 初始化數據 ---
+        // --- 1. 核心數據 ---
         let currentTab = 'schedule';
         let currentActiveDay = '2026-03-18';
-        
+        const APP_USER = "Zora"; 
+        let members = ["Zora", "成員A", "成員B", "成員C", "成員D"];
+        const RATE_CHF = 36.8;
+
         let schedules = [
             { id: 1, date: '2026-03-18', time: '00:20', title: '台北 TPE (EK0387)', city: '台北', cat: 'flight', note: '啟程前往杜拜', done: false, map: 'https://maps.google.com/?q=TPE' },
             { id: 2, date: '2026-03-18', time: '12:25', title: '蘇黎世 ZRH 抵達 (EK0087)', city: '蘇黎世', cat: 'flight', note: '辦理入境手續', done: false, map: 'https://maps.google.com/?q=ZRH' },
             { id: 3, date: '2026-03-18', time: '13:30', title: '火車：蘇黎世 → 因特拉肯', city: '因特拉肯', cat: 'transport', note: '車程約 2 小時', done: false, map: 'https://maps.google.com/?q=Interlaken' },
-            { id: 4, date: '2026-03-19', time: '08:40', title: '因特拉肯 → 格林德瓦', city: '格林德瓦', cat: 'transport', done: false },
-            { id: 5, date: '2026-03-19', time: '11:00', title: '少女峰 Jungfraujoch', city: '少女峰', cat: 'spot', note: '全歐最高火車站', done: false, map: 'https://maps.google.com/?q=Jungfraujoch' },
-            { id: 6, date: '2026-03-27', time: '09:00', title: 'Gornergrat 齒軌火車', city: '策馬特', cat: 'transport', done: false }
+            { id: 4, date: '2026-03-19', time: '11:00', title: '少女峰 Jungfraujoch', city: '少女峰', cat: 'spot', note: '全歐最高火車站', done: false, map: 'https://maps.google.com/?q=Jungfraujoch' }
         ];
 
         let expenses = [
@@ -97,15 +99,14 @@
         ];
 
         let chatMessages = [
-            { user: '系統', text: '歡迎來到瑞士 2026 旅行日記！', time: '12:00', isMe: false },
-            { user: 'Zora', text: '大家別忘了檢查護照期限喔！', time: '12:05', isMe: true }
+            { user: '系統', text: '歡迎來到瑞士 2026 旅行日記！', time: '12:00', isMe: false }
         ];
 
         let todos = [{ id: 1, text: '機票開票', done: true }, { id: 2, text: '購入 eSIM', done: false }];
         
         let dailyMetadata = {
-            '2026-03-18': { title: '啟程：瑞士之光', weather: '晴時多雲', rain: '10%', visibility: '15km', fog: '無' },
-            '2026-03-19': { title: '征服少女峰', weather: '大雪', rain: '85%', visibility: '2km', fog: '重霧' }
+            '2026-03-18': { title: '啟程：瑞士之光', location: '蘇黎世 (Zurich)', weather: '晴時多雲', rain: '10%', visibility: '15km', fog: '無' },
+            '2026-03-19': { title: '征服少女峰', location: '少女峰 (Jungfraujoch)', weather: '大雪', rain: '85%', visibility: '2km', fog: '重霧' }
         };
 
         const SWISS_DAYS = Array.from({length: 14}, (_, i) => ({
@@ -127,50 +128,44 @@
             }
         }
 
-        // --- 3. 核心渲染器 ---
         function render() {
             const container = document.getElementById('app-content');
             updateNavStyles();
 
             if (currentTab === 'schedule') {
-                const meta = dailyMetadata[currentActiveDay] || { title: '未命名行程', weather: '--', rain: '--', visibility: '--', fog: '--' };
+                const meta = dailyMetadata[currentActiveDay] || { title: '未命名主題', location: '瑞士', weather: '--', rain: '--', visibility: '--', fog: '--' };
                 container.innerHTML = `
-                    <!-- 每日標題 (可編輯) -->
-                    <div class="mb-6 animate-fade-in px-1">
-                        <input onchange="saveDailyTitle(this.value)" class="bg-transparent border-none text-blue-600 font-black text-2xl outline-none w-full" value="${meta.title}">
-                    </div>
-
-                    <!-- 詳細氣象板 -->
-                    <div class="bg-blue-500 rounded-[2.5rem] p-6 text-white shadow-xl flex justify-between items-center mb-8 relative overflow-hidden">
+                    <!-- 1. 詳細氣象板 -->
+                    <div class="bg-blue-500 rounded-[2.5rem] p-6 text-white shadow-xl flex justify-between items-center mb-8 relative overflow-hidden animate-fade-in">
                         <div class="z-10 flex-1">
-                            <div class="flex items-center gap-2 mb-2"><i data-lucide="cloud-rain" class="w-4 h-4"></i><span class="text-[10px] font-black uppercase opacity-60">Weather Details</span></div>
+                            <div class="flex items-center gap-2 mb-2"><i data-lucide="map-pin" class="w-4 h-4 opacity-60"></i><span class="text-[10px] font-black uppercase tracking-widest opacity-60">${meta.location} · Weather</span></div>
                             <h3 class="text-2xl font-black mb-1">${meta.weather}</h3>
-                            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-bold opacity-80">
-                                <span>降雨機率: ${meta.rain}</span>
-                                <span>能見度: ${meta.visibility}</span>
-                                <span>霧氣程度: ${meta.fog}</span>
-                            </div>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-bold opacity-80"><span>降雨: ${meta.rain}</span><span>能見度: ${meta.visibility}</span><span>霧氣: ${meta.fog}</span></div>
                         </div>
                         <i data-lucide="sun" class="w-16 h-16 opacity-30"></i>
                     </div>
 
-                    <!-- 行程總表 (附件一格式) -->
-                    <div class="bg-white/40 rounded-[2.5rem] p-6 mb-8 border-2 border-white shadow-inner">
-                        <p class="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3">Daily Itinerary Summary</p>
-                        <div class="space-y-3">
-                            ${renderSummaryTable()}
-                        </div>
+                    <!-- 2. 行程總表 -->
+                    <div class="bg-white/40 rounded-[2.5rem] p-6 mb-6 border-2 border-white shadow-inner animate-fade-in">
+                        <p class="text-[10px] font-black uppercase text-blue-500 mb-3">Daily Itinerary Summary</p>
+                        <div class="space-y-3">${renderSummaryTable()}</div>
                     </div>
 
-                    <!-- 日期滾動 -->
+                    <!-- 3. 每日標題欄位 (在總表與卡片之間) -->
+                    <div class="mb-8 px-2 py-4 bg-white/20 rounded-3xl border-b-4 border-blue-500 animate-fade-in">
+                        <p class="text-[9px] font-black uppercase text-blue-600 mb-1">Daily Journey Topic / 行程主題</p>
+                        <input onchange="saveDailyTitle(this.value)" class="bg-transparent border-none text-blue-800 font-black text-2xl outline-none w-full placeholder-blue-300" placeholder="點擊編輯今日主題..." value="${meta.title}">
+                    </div>
+
+                    <!-- 4. 日期滾動 -->
                     <div class="flex gap-4 overflow-x-auto pb-6 no-scrollbar touch-pan-x" id="date-scroll">${renderDateButtons()}</div>
 
                     <div class="flex justify-between items-center mb-6 px-1">
                         <h2 class="text-2xl font-black tracking-tighter">冒險清單</h2>
-                        <button onclick="openSwapModal()" class="text-[10px] font-black bg-white px-4 py-2 rounded-full shadow-sm">⇅ 對調整日行程</button>
+                        <button onclick="openSwapModal()" class="text-[10px] font-black bg-white px-4 py-2 rounded-full shadow-sm">⇅ 行程整日對調</button>
                     </div>
 
-                    <!-- 行程時間軸 -->
+                    <!-- 5. 行程時間軸 -->
                     <div class="relative pl-14 space-y-10" id="schedule-container">
                         <div class="absolute left-[1.65rem] top-8 bottom-8 w-[3.5px] bg-[#1C1912]/10 rounded-full"></div>
                         ${renderScheduleItems()}
@@ -188,7 +183,7 @@
             lucide.createIcons();
         }
 
-        // --- 4. 功能組件渲染 ---
+        // --- 3. 行程渲染輔助 ---
 
         function renderDateButtons() {
             return SWISS_DAYS.map(day => `
@@ -203,10 +198,9 @@
             const items = schedules.filter(s => s.date === currentActiveDay);
             if (items.length === 0) return `<p class="text-xs italic opacity-30">無摘要資料</p>`;
             return items.map(item => `
-                <div class="flex items-center gap-4 text-xs font-bold border-b border-black/5 pb-2">
-                    <span class="text-blue-500 font-mono w-10">${item.time}</span>
-                    <span class="flex-1 truncate uppercase">${item.title}</span>
-                    <span class="opacity-30">📍 ${item.city}</span>
+                <div class="flex items-center gap-4 text-xs font-bold border-b border-black/5 pb-2 uppercase">
+                    <span class="text-blue-500 font-mono w-10 shrink-0">${item.time}</span>
+                    <span class="flex-1 truncate">${item.title}</span>
                 </div>
             `).join('');
         }
@@ -215,7 +209,6 @@
             const items = schedules.filter(s => s.date === currentActiveDay);
             if (items.length === 0) return `<div class="py-20 text-center text-[#4A4433]/30 font-black italic">今日暫無行程</div>`;
             
-            // 找出第一個未完成的索引
             const firstUndoneIdx = items.findIndex(item => !item.done);
 
             return items.map((item, idx) => {
@@ -224,89 +217,79 @@
 
                 return `
                     <div class="relative animate-fade-in group">
-                        <!-- 跑步小人 & 勾選框 -->
                         <div onclick="toggleSchedule(${item.id})" class="absolute -left-[3.25rem] top-8 z-20 w-12 h-12 rounded-full border-[5px] border-[#CFC8B3] flex items-center justify-center shadow-xl transition-all ${item.done ? 'bg-green-500' : 'bg-white'}">
                             ${item.done ? '<i data-lucide="check" class="text-white w-6 h-6 stroke-[4px]"></i>' : (isRunnerHere ? '<span class="text-2xl running-man">🏃</span>' : '<div class="w-3 h-3 rounded-full bg-black/10"></div>')}
                         </div>
 
-                        <!-- 行程卡片 -->
-                        <div class="bg-white rounded-[2.5rem] shadow-[12px_12px_0px_rgba(28,25,18,0.1)] border-[3px] border-[#4A4433] p-8 relative active:scale-95 transition-all ${item.done ? 'item-done' : ''}">
-                            <div class="absolute top-0 right-0 w-5 h-full rounded-r-[2.2rem] ${getCatColor(item.cat)}"></div>
+                        <div class="bg-white rounded-[2.5rem] shadow-[12px_12px_0px_rgba(28,25,18,0.1)] border-[3px] border-[#4A4433] p-6 relative active:scale-95 transition-all ${item.done ? 'item-done' : ''}">
+                            <div class="absolute top-0 right-0 w-4 h-full rounded-r-[1.8rem] ${getCatColor(item.cat)}"></div>
                             <div class="flex flex-col gap-4">
                                 <div class="flex justify-between items-start">
                                     <span class="text-[10px] font-black bg-[#1C1912]/5 text-[#1C1912]/40 px-3 py-1 rounded-lg tracking-widest uppercase">📍 ${item.city}</span>
                                     <button onclick="deleteSchedule(${item.id})" class="text-red-500/20 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                                 </div>
-                                <span class="text-sm font-black text-blue-600 font-mono tracking-tighter">${item.time}</span>
-                                <h3 class="text-2xl font-black text-[#1C1912] leading-tight">${item.title}</h3>
+                                <h3 class="text-xl font-black text-[#1C1912] leading-tight flex-1 pr-4">${item.title}</h3>
                                 
-                                <!-- 照片顯示區塊 -->
-                                <div class="w-full aspect-[4/3] bg-gray-100 rounded-3xl overflow-hidden border-2 border-dashed border-black/5 flex items-center justify-center">
-                                    <i data-lucide="image" class="text-black/10 w-10 h-10"></i>
+                                <!-- 照片區塊 (縮小調整) -->
+                                <div class="w-full h-32 bg-gray-100 rounded-3xl overflow-hidden border-2 border-dashed border-black/5 flex items-center justify-center relative">
+                                    <i data-lucide="image" class="text-black/10 w-8 h-8"></i>
+                                    <span class="absolute bottom-2 right-4 text-[8px] font-black uppercase opacity-20 italic">Memory Photo</span>
                                 </div>
 
-                                ${item.note ? `<p class="text-[14px] text-[#1C1912]/60 font-bold italic border-l-[6px] border-[#1C1912]/10 pl-5 py-1 bg-black/5 rounded-r-2xl leading-relaxed">“ ${item.note} ”</p>` : ''}
-                                
-                                ${item.map ? `<a href="${item.map}" target="_blank" class="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-2xl font-black text-sm shadow-lg active:scale-95 transition-all"><i data-lucide="navigation"></i> 導航至此處</a>` : ''}
+                                ${item.note ? `<p class="text-[13px] text-[#1C1912]/60 font-bold italic border-l-[6px] border-[#1C1912]/10 pl-4 py-1 leading-relaxed bg-black/5 rounded-r-2xl">“ ${item.note} ”</p>` : ''}
+                                ${item.map ? `<a href="${item.map}" target="_blank" class="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest"><i data-lucide="navigation" class="w-3 h-3"></i> Google Map</a>` : ''}
                             </div>
                         </div>
 
-                        <!-- 路線指示卡片 (夾在行程之間) -->
-                        ${!isLastItem ? `
-                            <div class="ml-4 my-6 p-5 border-l-4 border-dashed border-blue-400 bg-blue-50/50 rounded-r-2xl flex items-center gap-4 animate-pulse">
-                                <i data-lucide="map-pin" class="text-blue-500"></i>
-                                <div>
-                                    <p class="text-[10px] font-black uppercase text-blue-600 opacity-60 italic tracking-widest">AI Route Assistant</p>
-                                    <p class="text-xs font-bold text-blue-800">根據 Google Map：預計交通時間 45 分鐘，建議轉乘 S1 線火車。</p>
-                                </div>
-                            </div>
-                        ` : ''}
+                        ${!isLastItem ? `<div class="ml-4 my-6 p-4 border-l-4 border-dashed border-blue-400 bg-blue-50/50 rounded-r-2xl text-[10px] font-bold text-blue-800">
+                            <p class="opacity-40 uppercase tracking-widest mb-1">AI Route Instruction</p>
+                            預計 30 分鐘，建議步行至車站搭乘區間車。
+                        </div>` : ''}
                     </div>
                 `;
             }).join('');
         }
 
+        // --- 4. 憑證與記帳 (補全回程) ---
+
         function renderBooking(container) {
             container.innerHTML = `
-                <div class="space-y-10 animate-fade-in pb-20">
+                <div class="space-y-10 animate-fade-in pb-20 px-1">
                     <h2 class="text-4xl font-black text-[#1C1912] px-2 flex items-center gap-4"><i data-lucide="layers" class="text-blue-600"></i> 航班憑證</h2>
-                    
-                    <!-- 去程 EK0387/EK0087 -->
                     <div class="bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border-b-[15px] border-[#AA1D24] mb-8">
-                        <div class="bg-[#AA1D24] p-10 text-white flex justify-between items-center font-black italic">
-                            <div><p class="text-2xl tracking-tighter uppercase leading-none">阿聯酋航空 • 去程</p><p class="text-xs opacity-70 mt-2">EK0387 / EK0087</p></div>
-                            <div class="bg-black/20 px-4 py-2 rounded-2xl border border-white/20 text-sm">3/18 CONFIRMED</div>
+                        <div class="bg-[#AA1D24] p-8 text-white flex justify-between items-center font-black italic uppercase">
+                            <div><p class="text-xl tracking-tighter leading-none">阿聯酋航空 • 去程</p><p class="text-[10px] opacity-70 mt-1">EK0387 / EK0087</p></div>
+                            <div class="bg-black/20 px-4 py-2 rounded-2xl border border-white/20 text-sm">3/18 OK</div>
                         </div>
-                        <div class="p-12 space-y-12 font-mono">
-                            <div class="flex justify-between items-center border-b border-dashed pb-8">
-                                <div class="text-center"><p class="text-5xl font-black">TPE</p><p class="text-sm text-blue-600 font-bold mt-2">00:20</p></div>
-                                <div class="flex flex-col items-center opacity-30 text-xs font-black uppercase"><i data-lucide="arrow-right" class="w-8 h-8"></i>9h 50m</div>
-                                <div class="text-center opacity-40"><p class="text-5xl font-black">DXB</p><p class="text-sm mt-2">06:10</p></div>
+                        <div class="p-10 space-y-8 font-mono">
+                            <div class="flex justify-between items-center border-b border-dashed pb-6">
+                                <div class="text-center"><p class="text-4xl font-black">TPE</p><p class="text-sm text-blue-600 font-bold mt-1">00:20</p></div>
+                                <div class="flex flex-col items-center opacity-30 text-[10px] font-black"><i data-lucide="arrow-right"></i>9h 50m</div>
+                                <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm mt-1">06:10</p></div>
                             </div>
                             <div class="flex justify-between items-center">
-                                <div class="text-center opacity-40"><p class="text-5xl font-black">DXB</p><p class="text-sm mt-2">08:25</p></div>
-                                <div class="flex flex-col items-center opacity-30 text-xs font-black uppercase"><i data-lucide="arrow-right" class="w-8 h-8"></i>7h 00m</div>
-                                <div class="text-center"><p class="text-5xl font-black text-[#1C1912]">ZRH</p><p class="text-sm text-blue-600 font-bold mt-2">12:25</p></div>
+                                <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm mt-1">08:25</p></div>
+                                <div class="flex flex-col items-center opacity-30 text-[10px] font-black"><i data-lucide="arrow-right"></i>7h 00m</div>
+                                <div class="text-center"><p class="text-4xl font-black">ZRH</p><p class="text-sm text-blue-600 font-bold mt-1">12:25</p></div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- 回程 EK0088/EK0366 -->
-                    <div class="bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border-b-[15px] border-[#1C1912] opacity-90">
-                        <div class="bg-[#1C1912] p-10 text-white flex justify-between items-center font-black italic">
-                            <div><p class="text-2xl tracking-tighter uppercase leading-none">阿聯酋航空 • 回程</p><p class="text-xs opacity-70 mt-2">EK0088 / EK0366</p></div>
+                    <!-- 回程航班 -->
+                    <div class="bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border-b-[15px] border-[#1C1912]">
+                        <div class="bg-[#1C1912] p-8 text-white flex justify-between items-center font-black italic uppercase">
+                            <div><p class="text-xl tracking-tighter leading-none">阿聯酋航空 • 回程</p><p class="text-[10px] opacity-70 mt-1">EK0088 / EK0366</p></div>
                             <div class="bg-white/10 px-4 py-2 rounded-2xl border border-white/10 text-sm font-mono">3/30-31 OK</div>
                         </div>
-                        <div class="p-12 space-y-12 font-mono">
-                            <div class="flex justify-between items-center border-b border-dashed pb-8 text-black/40">
-                                <div class="text-center text-black"><p class="text-5xl font-black">ZRH</p><p class="text-sm text-blue-600 font-bold mt-2">15:30</p></div>
-                                <div class="flex flex-col items-center opacity-30 text-xs font-black uppercase"><i data-lucide="arrow-right" class="w-8 h-8"></i>6h 15m</div>
-                                <div class="text-center"><p class="text-5xl font-black">DXB</p><p class="text-sm mt-2">23:45</p></div>
+                        <div class="p-10 space-y-8 font-mono">
+                            <div class="flex justify-between items-center border-b border-dashed pb-6">
+                                <div class="text-center"><p class="text-4xl font-black">ZRH</p><p class="text-sm text-blue-600 font-bold mt-1">15:30</p></div>
+                                <div class="flex flex-col items-center opacity-30 text-[10px] font-black"><i data-lucide="arrow-right"></i>6h 15m</div>
+                                <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm mt-1">23:45</p></div>
                             </div>
-                            <div class="flex justify-between items-center">
-                                <div class="text-center opacity-40"><p class="text-5xl font-black">DXB</p><p class="text-sm mt-2">03:45</p></div>
-                                <div class="flex flex-col items-center opacity-30 text-xs font-black uppercase"><i data-lucide="arrow-right" class="w-8 h-8"></i>8h 25m</div>
-                                <div class="text-center text-black"><p class="text-5xl font-black">TPE</p><p class="text-sm text-blue-600 font-bold mt-2">16:10</p></div>
+                            <div class="flex justify-between items-center pt-2">
+                                <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm mt-1">03:45</p></div>
+                                <div class="flex flex-col items-center opacity-30 text-[10px] font-black"><i data-lucide="arrow-right"></i>8h 25m</div>
+                                <div class="text-center"><p class="text-4xl font-black">TPE</p><p class="text-sm text-blue-600 font-bold mt-1">16:10</p></div>
                             </div>
                         </div>
                     </div>
@@ -315,43 +298,37 @@
         }
 
         function renderExpense(container) {
-            const memberTotals = {};
-            let totalCHF = 0;
+            const memberStats = {};
+            let totalTWD = 0;
+            members.forEach(m => memberStats[m] = 0);
             expenses.forEach(e => {
-                const amt = e.currency === 'CHF' ? e.amount : e.amount / 36.8;
-                totalCHF += amt;
-                memberTotals[e.user] = (memberTotals[e.user] || 0) + amt;
+                const amtInTWD = e.currency === 'CHF' ? e.amount * RATE_CHF : e.amount;
+                totalTWD += amtInTWD;
+                if (memberStats[e.user] !== undefined) memberStats[e.user] += amtInTWD;
             });
 
             container.innerHTML = `
                 <div class="space-y-8 animate-fade-in pb-20">
-                    <!-- 預算總盤與個人分帳 -->
                     <div class="bg-gradient-to-br from-[#1C1912] to-[#4A4433] rounded-[3.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
-                        <p class="text-[12px] font-black uppercase text-blue-400 mb-4 tracking-[0.5em]">Swiss Budget Tracker</p>
-                        <h2 class="text-6xl font-black tracking-tighter mb-10"><span class="text-2xl opacity-40">NT$</span> ${Math.round(totalCHF * 36.8).toLocaleString()}</h2>
-                        
+                        <p class="text-[12px] font-black uppercase text-blue-400 mb-4 tracking-[0.5em]">Swiss Budget Stats</p>
+                        <h2 class="text-6xl font-black tracking-tighter mb-10 font-mono"><span class="text-2xl opacity-40">NT$</span> ${Math.round(totalTWD).toLocaleString()}</h2>
                         <div class="space-y-4 border-t border-white/10 pt-8">
-                            <p class="text-[10px] font-black uppercase opacity-40 tracking-widest">成員個別支出 (瑞郎換算)</p>
-                            ${Object.entries(memberTotals).map(([user, amt]) => `
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm font-bold opacity-60">@${user}</span>
-                                    <span class="text-xl font-black font-mono">CHF ${amt.toFixed(1)}</span>
+                            <p class="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2">成員支出統計 (台幣換算)</p>
+                            ${members.map(m => `
+                                <div class="flex justify-between items-center group">
+                                    <span class="text-sm font-bold opacity-60">@${m}</span>
+                                    <span class="text-xl font-black font-mono">NT$ ${Math.round(memberStats[m]).toLocaleString()}</span>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
-
-                    <!-- 支出清單 -->
                     <div class="space-y-4">
                         ${expenses.map(e => `
-                            <div class="bg-white rounded-[2.5rem] p-8 shadow-xl flex justify-between items-center border-[3px] border-[#4A4433]">
-                                <div>
-                                    <p class="text-2xl font-black leading-tight">${e.title}</p>
-                                    <p class="text-[10px] font-black text-blue-600 uppercase mt-1">@${e.user}</p>
-                                </div>
-                                <div class="text-right font-mono">
-                                    <p class="text-3xl font-black text-blue-600"> ${e.currency} ${e.amount}</p>
-                                    <p class="text-[10px] font-bold opacity-30 mt-1">≈ NT$ ${Math.round(e.currency === 'CHF' ? e.amount*36.8 : e.amount).toLocaleString()}</p>
+                            <div class="bg-white rounded-[2.5rem] p-8 shadow-xl flex justify-between items-center border-[3px] border-[#4A4433] relative">
+                                <div><p class="text-2xl font-black leading-tight">${e.title}</p><p class="text-[10px] font-black text-blue-600 uppercase mt-1">@${e.user}</p></div>
+                                <div class="text-right flex items-center gap-6">
+                                    <div class="font-mono text-right"><p class="text-2xl font-black text-blue-600">${e.currency} ${e.amount}</p></div>
+                                    <button onclick="deleteExpense(${e.id})" class="text-red-300 hover:text-red-500"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                                 </div>
                             </div>
                         `).join('')}
@@ -360,18 +337,35 @@
             `;
         }
 
+        // --- 5. 成員管理與準備 ---
+
         function renderPlanning(container) {
             container.innerHTML = `
-                <div class="space-y-10 animate-fade-in pb-20 mt-6 px-2">
-                    <h2 class="text-4xl font-black text-[#1C1912] tracking-tighter">準備清單</h2>
+                <div class="space-y-12 animate-fade-in pb-20">
+                    <!-- 成員清單管理 -->
+                    <div class="bg-white/40 rounded-[3rem] p-8 border-2 border-white shadow-inner">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-black tracking-widest text-blue-800 uppercase flex items-center gap-2"><i data-lucide="users"></i> 成員管理</h3>
+                            <button onclick="openAddMemberModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-xs shadow-lg active:scale-90 transition-all">+ 新增成員</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${members.map((m, idx) => `
+                                <div class="bg-white p-4 rounded-2xl border-2 border-black/5 flex justify-between items-center">
+                                    <span class="font-black text-sm">@${m}</span>
+                                    ${m !== APP_USER ? `<button onclick="removeMember(${idx})" class="text-red-200 hover:text-red-400"><i data-lucide="x" class="w-4 h-4"></i></button>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
                     <div class="space-y-6">
+                        <h2 class="text-3xl font-black px-2 flex items-center gap-4">準備清單</h2>
                         ${todos.map(t => `
                             <div onclick="toggleTodo(${t.id})" class="bg-white rounded-[2.5rem] p-8 flex items-center gap-6 shadow-xl border-[3px] transition-all ${t.done ? 'opacity-40 grayscale border-transparent bg-gray-50' : 'border-[#4A4433] active:scale-95'}">
-                                <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-4 ${t.done ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/30' : 'border-gray-200 bg-gray-50 shadow-inner'}">
+                                <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-4 ${t.done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200'}">
                                     ${t.done ? '<i data-lucide="check" class="w-8 h-8 stroke-[4px]"></i>' : ''}
                                 </div>
                                 <span class="text-2xl font-black flex-1 ${t.done ? 'line-through' : ''}">${t.text}</span>
-                                <button onclick="event.stopPropagation(); deleteTodo(${t.id})" class="text-red-400 p-2"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                             </div>
                         `).join('')}
                     </div>
@@ -382,153 +376,128 @@
         function renderChat(container) {
             container.innerHTML = `
                 <div class="flex flex-col h-[70vh] animate-fade-in">
-                    <h2 class="text-4xl font-black mb-8 px-2 tracking-tighter">共享日記/交流</h2>
+                    <h2 class="text-4xl font-black mb-8 px-2 tracking-tighter">成員共享日記</h2>
                     <div class="flex-1 overflow-y-auto space-y-6 px-2 mb-4 no-scrollbar">
                         ${chatMessages.map(m => `
-                            <div class="flex flex-col ${m.isMe ? 'items-end' : 'items-start'}">
-                                <div class="flex items-center gap-2 mb-1 px-2">
-                                    <span class="text-[10px] font-black uppercase opacity-40">@${m.user}</span>
-                                    <span class="text-[9px] font-mono opacity-20">${m.time}</span>
-                                </div>
-                                <div class="${m.isMe ? 'chat-bubble-me shadow-lg shadow-blue-500/20' : 'bg-white border-[3px] border-[#4A4433] chat-bubble'} p-5 font-bold max-w-[85%] text-lg">
-                                    ${m.text}
-                                </div>
+                            <div class="flex flex-col ${m.user === APP_USER ? 'items-end' : 'items-start'}">
+                                <div class="flex items-center gap-2 mb-1 px-2"><span class="text-[10px] font-black uppercase opacity-40">@${m.user}</span><span class="text-[9px] font-mono opacity-20">${m.time}</span></div>
+                                <div class="${m.user === APP_USER ? 'chat-bubble-me' : 'bg-white border-[3px] border-[#4A4433] chat-bubble'} p-5 font-bold max-w-[85%] text-lg shadow-sm">${m.text}</div>
                             </div>
                         `).join('')}
                     </div>
                     <div class="bg-white rounded-[2.5rem] p-4 border-[3px] border-[#1C1912] shadow-2xl flex items-center gap-3">
-                        <input id="chat-input" class="flex-1 bg-transparent border-none outline-none font-bold px-4 h-12" placeholder="記下旅程中的點滴...">
+                        <input id="chat-input" class="flex-1 bg-transparent border-none outline-none font-bold px-4 h-12" placeholder="記下今天最深刻的事...">
                         <button onclick="sendChat()" class="bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-90"><i data-lucide="send" class="w-5 h-5"></i></button>
                     </div>
                 </div>
             `;
         }
 
-        // --- 5. 萬能新增功能 ---
+        // --- 6. 功能彈窗邏輯 ---
+
         function openAddModal() {
             const modal = document.getElementById('modal-overlay');
-            const title = document.getElementById('modal-title');
             const body = document.getElementById('modal-body');
+            document.getElementById('modal-title').innerText = currentTab === 'schedule' ? "新增行程項目" : currentTab === 'expense' ? "紀錄支出" : "新增事項";
             modal.classList.remove('hidden');
 
             if (currentTab === 'schedule') {
-                title.innerText = "新增冒險行程";
                 body.innerHTML = `
                     <div class="space-y-5">
-                        <input id="add-time" type="time" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none focus:border-blue-500" value="10:00">
-                        <input id="add-city" placeholder="城市" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none focus:border-blue-500">
-                        <input id="add-title" placeholder="項目名稱" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none focus:border-blue-500">
-                        <div class="p-8 border-4 border-dashed border-gray-200 rounded-[2rem] flex flex-col items-center gap-2 bg-gray-50 relative">
-                            <i data-lucide="camera" class="w-8 h-8 text-gray-400"></i>
-                            <span class="text-xs font-black text-gray-400">新增照片/現場拍照</span>
-                            <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
-                        </div>
-                        <button onclick="submitSchedule()" class="w-full bg-[#1C1912] text-white py-8 rounded-[3.5rem] font-black text-2xl uppercase tracking-widest shadow-2xl">Confirm & Save</button>
-                    </div>
-                `;
+                        <input id="add-time" type="time" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none" value="10:00">
+                        <input id="add-city" placeholder="城市 (如：蘇黎世)" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
+                        <input id="add-title" placeholder="景點名稱" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
+                        <div class="p-10 border-4 border-dashed border-gray-200 rounded-[2rem] flex flex-col items-center gap-2 bg-gray-50 relative"><i data-lucide="camera" class="w-10 h-10 text-gray-400"></i><span class="text-[10px] font-black text-gray-400">拍照或選取照片</span><input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer"></div>
+                        <button onclick="submitSchedule()" class="w-full bg-[#1C1912] text-white py-8 rounded-[3.5rem] font-black text-2xl uppercase tracking-[0.5em] shadow-2xl">Save Journey</button>
+                    </div>`;
             } else if (currentTab === 'expense') {
-                title.innerText = "紀錄支出";
                 body.innerHTML = `
                     <div class="space-y-5">
-                        <input id="ex-title" placeholder="支出項目" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none focus:border-blue-500">
+                        <p class="text-[10px] font-black uppercase text-blue-500 mb-1">代墊成員：</p>
+                        <select id="ex-user" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">${members.map(m => `<option value="${m}" ${m===APP_USER?'selected':''}>${m === APP_USER ? m + ' (自己)' : m}</option>`).join('')}</select>
+                        <input id="ex-title" placeholder="支出項目名稱" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
                         <div class="grid grid-cols-2 gap-4">
-                            <input id="ex-amount" type="number" placeholder="金額" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none focus:border-blue-500">
-                            <select id="ex-currency" class="p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
-                                <option value="CHF">瑞郎 CHF</option>
-                                <option value="TWD">台幣 TWD</option>
-                                <option value="EUR">歐元 EUR</option>
-                            </select>
+                            <input id="ex-amount" type="number" placeholder="金額" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
+                            <select id="ex-currency" class="p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><option value="CHF">CHF</option><option value="TWD">TWD</option><option value="EUR">EUR</option></select>
                         </div>
-                        <div class="p-8 border-4 border-dashed border-gray-200 rounded-[2rem] flex flex-col items-center gap-2 bg-gray-50 relative">
-                            <i data-lucide="camera" class="w-8 h-8 text-gray-400"></i>
-                            <span class="text-xs font-black text-gray-400">拍攝收據 / 上傳截圖</span>
-                            <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
-                        </div>
-                        <button onclick="submitExpense()" class="w-full bg-blue-600 text-white py-8 rounded-[3.5rem] font-black text-2xl shadow-2xl">新增紀錄</button>
-                    </div>
-                `;
+                        <div class="p-8 border-4 border-dashed border-gray-200 rounded-[2rem] flex flex-col items-center gap-2 bg-gray-50 relative"><i data-lucide="camera" class="w-8 h-8 text-gray-400"></i><span class="text-xs font-black text-gray-400 uppercase">Save Receipt</span><input type="file" accept="image/*" class="absolute inset-0 opacity-0"></div>
+                        <button onclick="submitExpense()" class="w-full bg-blue-600 text-white py-8 rounded-[3.5rem] font-black text-2xl shadow-2xl tracking-[0.5em] uppercase">Add Record</button>
+                    </div>`;
             } else if (currentTab === 'planning') {
-                title.innerText = "新增清單";
-                body.innerHTML = `
-                    <input id="todo-text" placeholder="需要做什麼？" class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none focus:border-blue-500">
-                    <button onclick="submitTodo()" class="w-full bg-green-600 text-white py-8 rounded-[3.5rem] font-black text-2xl shadow-2xl">加入清單</button>
-                `;
+                body.innerHTML = `<input id="todo-text" placeholder="準備事項..." class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none"><button onclick="submitTodo()" class="w-full bg-blue-600 text-white py-8 rounded-[3.5rem] font-black text-2xl">Confirm</button>`;
             }
             lucide.createIcons();
         }
 
-        // --- 6. 核心處理函數 ---
+        function openAddMemberModal() {
+            const modal = document.getElementById('modal-overlay');
+            document.getElementById('modal-title').innerText = "新增團隊成員";
+            document.getElementById('modal-body').innerHTML = `
+                <div class="space-y-6">
+                    <input id="new-member-name" placeholder="輸入成員暱稱..." class="w-full p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">
+                    <button onclick="submitNewMember()" class="w-full bg-blue-600 text-white py-8 rounded-[3.5rem] font-black text-2xl shadow-xl">加入成員</button>
+                </div>`;
+            modal.classList.remove('hidden');
+        }
+
+        // --- 7. 資料操作函數 ---
         function submitSchedule() {
             const title = document.getElementById('add-title').value;
             if(!title) return;
             schedules.push({ id: Date.now(), date: currentActiveDay, time: document.getElementById('add-time').value, city: document.getElementById('add-city').value, title, cat: 'spot', done: false });
             closeModal(); render();
         }
-
         function submitExpense() {
+            const user = document.getElementById('ex-user').value;
             const title = document.getElementById('ex-title').value;
             const amount = parseFloat(document.getElementById('ex-amount').value);
-            if(!title || !amount) return;
-            expenses.push({ id: Date.now(), title, amount, currency: document.getElementById('ex-currency').value, user: 'Zora' });
+            if(!title || isNaN(amount)) return;
+            expenses.push({ id: Date.now(), title, amount, currency: document.getElementById('ex-currency').value, user });
             closeModal(); render();
         }
-
         function submitTodo() {
             const text = document.getElementById('todo-text').value;
             if(!text) return;
             todos.push({ id: Date.now(), text, done: false });
             closeModal(); render();
         }
-
+        function submitNewMember() {
+            const name = document.getElementById('new-member-name').value;
+            if(!name || members.includes(name)) return;
+            members.push(name);
+            closeModal(); render();
+        }
         function sendChat() {
             const input = document.getElementById('chat-input');
             if(!input.value) return;
-            chatMessages.push({ user: 'Zora', text: input.value, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), isMe: true });
+            chatMessages.push({ user: APP_USER, text: input.value, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), isMe: true });
             input.value = ''; render();
         }
 
-        function toggleSchedule(id) {
-            const s = schedules.find(x => x.id === id);
-            if(s) s.done = !s.done;
-            render();
-        }
-
+        function toggleSchedule(id) { const s = schedules.find(x => x.id === id); if(s) s.done = !s.done; render(); }
         function deleteSchedule(id) { schedules = schedules.filter(s => s.id !== id); render(); }
-        function deleteTodo(id) { todos = todos.filter(t => t.id !== id); render(); }
+        function deleteExpense(id) { expenses = expenses.filter(e => e.id !== id); render(); }
         function toggleTodo(id) { const t = todos.find(x => x.id === id); if(t) t.done = !t.done; render(); }
-        function saveDailyTitle(val) { if(!dailyMetadata[currentActiveDay]) dailyMetadata[currentActiveDay] = {}; dailyMetadata[currentActiveDay].title = val; }
-        function saveFocus(val) { console.log("Focused saved"); }
+        function removeMember(idx) { members.splice(idx, 1); render(); }
         function selectDay(dayId) { currentActiveDay = dayId; render(); }
         function switchTab(tabId) { currentTab = tabId; render(); }
         function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
         function getCatColor(cat) { return { spot: 'bg-[#A7B09E]', transport: 'bg-[#9BAEBC]', hotel: 'bg-[#E0D8C3]', flight: 'bg-[#C25E5E]' }[cat] || 'bg-gray-300'; }
+        function saveDailyTitle(val) { if(!dailyMetadata[currentActiveDay]) dailyMetadata[currentActiveDay] = {}; dailyMetadata[currentActiveDay].title = val; }
 
-        // 行程拖移處理
-        function handleDragStart(idx) { window.dragIdx = idx; }
-        function handleDrop(idx) {
-            const items = schedules.filter(s => s.date === currentActiveDay);
-            const source = items[window.dragIdx];
-            items.splice(window.dragIdx, 1);
-            items.splice(idx, 0, source);
-            schedules = schedules.filter(s => s.date !== currentActiveDay).concat(items);
-            render();
-        }
-
-        // 天數對調功能
         function openSwapModal() {
             const modal = document.getElementById('modal-overlay');
-            document.getElementById('modal-title').innerText = "行程整日對調";
+            document.getElementById('modal-title').innerText = "天數行程整日對調";
             document.getElementById('modal-body').innerHTML = `
                 <div class="flex flex-col gap-6">
                     <select id="swap-1" class="p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">${SWISS_DAYS.map(d => `<option value="${d.id}">${d.label} (${d.date})</option>`).join('')}</select>
-                    <div class="text-center text-blue-600 font-black text-3xl">⇅</div>
+                    <div class="text-center text-blue-600 font-black text-3xl italic tracking-widest">⇅ VS ⇅</div>
                     <select id="swap-2" class="p-6 rounded-3xl border-4 border-gray-100 font-black outline-none">${SWISS_DAYS.map(d => `<option value="${d.id}">${d.label} (${d.date})</option>`).join('')}</select>
-                    <button onclick="confirmSwap()" class="w-full bg-blue-600 text-white py-8 rounded-[3.5rem] font-black text-2xl shadow-2xl active:scale-95 transition-all">Confirm Swap</button>
-                </div>
-            `;
+                    <button onclick="confirmSwap()" class="w-full bg-blue-600 text-white py-8 rounded-[3.5rem] font-black text-2xl shadow-xl active:scale-95 transition-all">Confirm Swap</button>
+                </div>`;
             modal.classList.remove('hidden');
+            lucide.createIcons();
         }
-
         function confirmSwap() {
             const d1 = document.getElementById('swap-1').value;
             const d2 = document.getElementById('swap-2').value;
