@@ -139,6 +139,10 @@
           const [isPrepCompleteModalOpen, setIsPrepCompleteModalOpen] = useState(false);
           const [confirmData, setConfirmData] = useState(null);
           const [expensePhoto, setExpensePhoto] = useState(null);
+            useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 6000);
+    return () => clearTimeout(timer);
+}, []);
 
           useEffect(() => {
             if (isConfigMissing) return;
@@ -150,8 +154,10 @@
               }
             };
             initAuth();
-            return onAuthStateChanged(auth, setUser);
-          }, []);
+            return onAuthStateChanged(auth, (u) => {
+    setUser(u);
+    if (!u) setIsLoading(false); // 就算沒登入成功也要停止轉圈
+});
 
           useEffect(() => {
             if (isConfigMissing || !user) return;
