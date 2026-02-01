@@ -126,6 +126,7 @@
           const [isPrepCompleteModalOpen, setIsPrepCompleteModalOpen] = useState(false);
           const [confirmData, setConfirmData] = useState(null);
           const [expensePhoto, setExpensePhoto] = useState(null);
+            const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
 
           // 安全定時器
           useEffect(() => { const timer = setTimeout(() => setIsLoading(false), 6000); return () => clearTimeout(timer); }, []);
@@ -188,7 +189,17 @@
           const handleAddExpense = async (e) => { e.preventDefault(); const fd = new FormData(e.target); await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'), { user: fd.get('user'), title: fd.get('title'), amount: parseFloat(fd.get('amount')) || 0, currency: fd.get('currency'), photo: expensePhoto, timestamp: Date.now() }); setExpensePhoto(null); setIsAddingModalOpen(false); };
           const handleAddBooking = async (e) => { e.preventDefault(); const fd = new FormData(e.target); await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), { type: fd.get('type'), flightNo: fd.get('flightNo'), model: fd.get('model'), date: fd.get('date'), from: fd.get('from'), to: fd.get('to'), departureTime: fd.get('departureTime'), arrivalTime: fd.get('arrivalTime'), transitInfo: fd.get('transitInfo'), duration: fd.get('duration'), timestamp: Date.now() }); setIsAddingModalOpen(false); };
           const handleSendMessage = async (text) => { if (!text.trim() || !user) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'notes'), { text, user: "Zora", timestamp: Date.now() }); };
-          const toggleChecklist = async (id, status) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'checklist', id), { done: !status }); };
+          const handleAddMember = async (name) => {
+    if (!name || members.includes(name) || !user) return;
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), { list: [...members, name] });
+};
+
+const handleDeleteMember = async (idx) => {
+    if (!user) return;
+    const newList = members.filter((_, i) => i !== idx);
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), { list: newList });
+};
+            const toggleChecklist = async (id, status) => { if (!user) return; await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'checklist', id), { done: !status }); };
           const handleReorder = async (newOrder) => { if (!user) return; setSchedules(prev => [...prev.filter(s => s.date !== selectedDay), ...newOrder]); const batch = writeBatch(db); newOrder.forEach((item, index) => { batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id), { order: index }); }); await batch.commit(); };
 
           useEffect(() => { if (checklist.length > 0 && checklist.every(item => item.done)) setIsPrepCompleteModalOpen(true); }, [checklist]);
