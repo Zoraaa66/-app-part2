@@ -512,8 +512,7 @@ const handleDeleteMember = async (idx) => {
               </Modal>
             </div>
           );
-        }
-        {/* 旅伴管理 Modal */}
+                {/* 旅伴管理 Modal */}
 <Modal isOpen={isMemberModalOpen} onClose={() => setIsMemberModalOpen(false)} title="旅伴名單維護">
   <div className="space-y-6 font-black">
     <div className="space-y-3">
@@ -539,6 +538,7 @@ const handleDeleteMember = async (idx) => {
     </div>
   </div>
 </Modal>
+        }
 
         const container = document.getElementById('root');
         const root = createRoot(container);
