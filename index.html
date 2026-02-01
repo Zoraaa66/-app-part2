@@ -1,314 +1,631 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SWISS 2026 Shared Diary</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.24.6/babel.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Noto Sans TC', sans-serif; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .journal-card { border: 3px solid #1C1912; box-shadow: 12px 12px 0px rgba(0,0,0,0.1); transition: all 0.3s ease; }
-    .date-active { background-color: #8E9775 !important; color: white !important; transform: scale(1.1) rotate(-2deg); box-shadow: 0 10px 20px rgba(142, 151, 117, 0.4); }
-  </style>
-  <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "firebase/app": "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js",
-        "lucide-react": "https://esm.sh/lucide-react@0.292.0"
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { initializeApp, getApps } from 'firebase/app';
+import { 
+  getFirestore, collection, doc, onSnapshot, 
+  addDoc, updateDoc, deleteDoc, setDoc, writeBatch
+} from 'firebase/firestore';
+import { 
+  getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken 
+} from 'firebase/auth';
+import { 
+  Calendar, Plus, Map as MapIcon, 
+  Check, Trash2, ArrowRight, Wallet, 
+  User, RefreshCw, ChevronRight, 
+  Info, CheckSquare,
+  AlertCircle, MapPin, CreditCard, Send,
+  MessageSquare, CloudRain, MoveVertical, Repeat,
+  Navigation, Camera, Image as ImageIcon, ExternalLink,
+  ShoppingBag, Luggage, Plane, Clock, Hash
+} from 'lucide-react';
+import { motion, Reorder, AnimatePresence } from 'framer-motion';
+
+/**
+ * --- 1. 環境設定 ---
+ */
+const firebaseConfig = JSON.parse(__firebase_config);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-trip-v5-final';
+const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+const RATE_CHF = 36.8;
+const CURRENCIES = ["CHF", "TWD", "EUR", "USD", "GBP"];
+
+const CATEGORY_COLORS = {
+  flight: 'bg-[#C25E5E]',
+  transport: 'bg-[#9BAEBC]',
+  hotel: 'bg-[#E0D8C3]',
+  spot: 'bg-[#A7B09E]'
+};
+
+const SWISS_DAYS = Array.from({length: 13}, (_, i) => {
+  const d = new Date(2026, 2, 18 + i);
+  const weekday = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+  return { id: `2026-03-${18+i}`, label: `Day ${i+1}`, date: `3/${18+i}`, weekday };
+});
+
+/**
+ * --- 2. 元件定義 ---
+ */
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <motion.div 
+        initial={{ y: "100%" }} animate={{ y: 0 }}
+        className="bg-[#F7F4EB] w-full max-w-lg rounded-t-[3.5rem] sm:rounded-[3.5rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh] border-t-8 border-[#8E9775]"
+      >
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-black text-[#1C1912] tracking-tighter">{title}</h2>
+          <button onClick={onClose} className="p-3 bg-white rounded-full shadow-lg text-gray-400">✕</button>
+        </div>
+        {children}
+      </motion.div>
+    </div>
+  );
+};
+
+/**
+ * --- 3. App 主程式 ---
+ */
+export default function App() {
+  const [activeTab, setActiveTab] = useState('schedule');
+  const [selectedDay, setSelectedDay] = useState('2026-03-18');
+  const [user, setUser] = useState(null);
+  
+  // 資料狀態
+  const [schedules, setSchedules] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [members, setMembers] = useState(["Zora"]);
+  const [checklist, setChecklist] = useState([]);
+  const [bookings, setBookings] = useState([]); // 新增航班憑證
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddingModalOpen, setIsAddingModalOpen] = useState(false);
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [isPrepCompleteModalOpen, setIsPrepCompleteModalOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
+  const [appTitle, setAppTitle] = useState("SWISS 2026");
+
+  // 1. 認證
+  useEffect(() => {
+    const initAuth = async () => {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
       }
+    };
+    initAuth();
+    return onAuthStateChanged(auth, setUser);
+  }, []);
+
+  // 2. 資料監聽
+  useEffect(() => {
+    if (!user) return;
+    const publicData = (name) => collection(db, 'artifacts', appId, 'public', 'data', name);
+    const privateData = (name) => collection(db, 'artifacts', appId, 'users', user.uid, name);
+
+    const unsubS = onSnapshot(publicData('schedules'), (snap) => {
+      setSchedules(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setIsLoading(false);
+    }, (err) => console.error("Schedule error:", err));
+
+    const unsubE = onSnapshot(publicData('expenses'), snap => {
+      setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error("Expense error:", err));
+
+    const unsubN = onSnapshot(publicData('notes'), snap => {
+      setNotes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.timestamp - b.timestamp));
+    }, (err) => console.error("Note error:", err));
+
+    const unsubM = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), snap => {
+      if (snap.exists()) setMembers(snap.data().list);
+    }, (err) => console.error("Members error:", err));
+
+    const unsubC = onSnapshot(privateData('checklist'), snap => {
+      setChecklist(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error("Checklist error:", err));
+
+    const unsubB = onSnapshot(publicData('bookings'), snap => {
+      setBookings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error("Booking error:", err));
+
+    return () => { unsubS(); unsubE(); unsubN(); unsubM(); unsubC(); unsubB(); };
+  }, [user]);
+
+  // 行程排序與小人進度
+  const currentItems = useMemo(() => {
+    return schedules
+      .filter(s => s.date === selectedDay)
+      .sort((a, b) => (a.order || 0) - (b.order || 0) || a.time.toString().localeCompare(b.time.toString()));
+  }, [schedules, selectedDay]);
+
+  const nextRunnerIdx = useMemo(() => {
+    return currentItems.findIndex(i => !i.done);
+  }, [currentItems]);
+
+  const askConfirm = (title, message, action) => {
+    setConfirmData({ title, message, action });
+  };
+
+  // --- 記帳功能統計 ---
+  const expenseSummary = useMemo(() => {
+    const summary = {};
+    expenses.forEach(ex => {
+      const twd = ex.amount * (ex.currency === 'CHF' ? RATE_CHF : 1);
+      summary[ex.user] = (summary[ex.user] || 0) + twd;
+    });
+    return summary;
+  }, [expenses]);
+
+  // --- 新增行程 ---
+  const handleAddSchedule = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const fd = new FormData(e.target);
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedules'), {
+      date: selectedDay, 
+      time: fd.get('time'), 
+      city: fd.get('city'), 
+      title: fd.get('title'), 
+      note: fd.get('note'),
+      mapUrl: fd.get('mapUrl') || "",
+      category: 'spot', 
+      done: false, 
+      order: currentItems.length,
+      timestamp: Date.now()
+    });
+    setIsAddingModalOpen(false);
+  };
+
+  // --- 新增支出 (含照片) ---
+  const [expensePhoto, setExpensePhoto] = useState(null);
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const fd = new FormData(e.target);
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'), {
+      user: fd.get('user'), 
+      title: fd.get('title'), 
+      amount: parseFloat(fd.get('amount')) || 0, 
+      currency: fd.get('currency'), 
+      photo: expensePhoto,
+      timestamp: Date.now()
+    });
+    setExpensePhoto(null);
+    setIsAddingModalOpen(false);
+  };
+
+  // --- 新增憑證 ---
+  const handleAddBooking = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const fd = new FormData(e.target);
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), {
+      type: fd.get('type'),
+      flightNo: fd.get('flightNo'),
+      model: fd.get('model'),
+      date: fd.get('date'),
+      from: fd.get('from'),
+      to: fd.get('to'),
+      departureTime: fd.get('departureTime'),
+      arrivalTime: fd.get('arrivalTime'),
+      transitInfo: fd.get('transitInfo'),
+      duration: fd.get('duration'),
+      timestamp: Date.now()
+    });
+    setIsAddingModalOpen(false);
+  };
+
+  // --- 成員管理 ---
+  const handleAddMember = async (name) => {
+    if (!name || members.includes(name) || !user) return;
+    const newList = [...members, name];
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), { list: newList });
+  };
+
+  const handleDeleteMember = async (idx) => {
+    if (!user) return;
+    const newList = members.filter((_, i) => i !== idx);
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), { list: newList });
+  };
+
+  // --- 筆記聊天 (修正清空邏輯) ---
+  const handleSendMessage = async (text) => {
+    if (!text.trim() || !user) return "";
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'notes'), {
+      text, user: "Zora", timestamp: Date.now()
+    });
+    return "clear"; // 用於通知調用者清空
+  };
+
+  const handlePhotoUpload = async (id, slot, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const updateObj = {};
+      updateObj[`photo${slot}`] = e.target.result;
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', id), updateObj);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toggleChecklist = async (id, status) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'checklist', id), { done: !status });
+  };
+
+  const handleReorder = async (newOrder) => {
+    if (!user) return;
+    setSchedules(prev => [...prev.filter(s => s.date !== selectedDay), ...newOrder]);
+    const batch = writeBatch(db);
+    newOrder.forEach((item, index) => {
+      const ref = doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id);
+      batch.update(ref, { order: index });
+    });
+    await batch.commit();
+  };
+
+  useEffect(() => {
+    if (checklist.length > 0 && checklist.every(item => item.done)) {
+      setIsPrepCompleteModalOpen(true);
     }
-  </script>
-</head>
-<body class="bg-[#CFC8B3]">
-  <div id="root"></div>
+  }, [checklist]);
 
-  <script type="text/babel" data-type="module" data-presets="react">
-    import React, { useState, useEffect, useMemo } from 'react';
-    import { createRoot } from 'react-dom/client';
-    import { initializeApp, getApps } from 'firebase/app';
-    import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
-    import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-    import { Calendar, Plus, Map as MapIcon, Check, Trash2, ArrowRight, Wallet, User, ChevronRight, Camera, Info, CheckSquare, AlertCircle, MapPin, CreditCard } from 'lucide-react';
+  const totalExpenseTWD = useMemo(() => 
+    expenses.reduce((acc, ex) => acc + (ex.amount * (ex.currency === 'CHF' ? RATE_CHF : 1)), 0),
+  [expenses]);
 
-    const RATE_CHF = 36.8;
-    const appId = 'swiss-trip-final-v43';
+  return (
+    <div className="min-h-screen bg-[#CFC8B3] text-[#1C1912] font-black select-none overflow-x-hidden">
+      
+      {isLoading && (
+        <div className="fixed inset-0 z-[2000] bg-[#CFC8B3] flex flex-col items-center justify-center">
+          <RefreshCw className="animate-spin text-[#8E9775] mb-4" size={48} />
+          <p className="tracking-widest text-xs opacity-50 uppercase">Loading Swiss Diary...</p>
+        </div>
+      )}
 
-    // 1. 初始化 Firebase (請確保 __firebase_config 已正確注入)
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "demo", projectId: "demo" };
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+      {/* Header */}
+      <header className="sticky top-0 z-[100] bg-[#CFC8B3]/90 backdrop-blur-md px-6 py-8 flex justify-between items-center border-b-2 border-black/5">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center text-[#CFC8B3] shadow-lg rotate-3">
+            <MapIcon size={24} strokeWidth={3} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tighter leading-none">SWISS 2026</h1>
+            <p className="text-[10px] text-[#8E9775] tracking-[0.4em] mt-1 opacity-60">SHARED TRAVEL DOC</p>
+          </div>
+        </div>
+        <button onClick={() => setIsAddingModalOpen(true)} className="bg-[#8E9775] text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform">
+          <Plus size={28} strokeWidth={4} />
+        </button>
+      </header>
 
-    // 2. 輔助函式：取得一致的資料路徑
-    const getDataRef = (name) => collection(db, 'artifacts', appId, 'public', 'data', name);
-
-    function App() {
-      const [activeTab, setActiveTab] = useState('schedule');
-      const [selectedDay, setSelectedDay] = useState('2026-03-18');
-      const [user, setUser] = useState(null);
-      const [schedules, setSchedules] = useState([]);
-      const [expenses, setExpenses] = useState([]);
-      const [todos, setTodos] = useState([]);
-      const [members, setMembers] = useState(["Zora"]);
-      const [isAddingModalOpen, setIsAddingModalOpen] = useState(false);
-      const [confirmData, setConfirmData] = useState(null);
-
-      // 身分驗證
-      useEffect(() => {
-        signInAnonymously(auth);
-        onAuthStateChanged(auth, setUser);
-      }, []);
-
-      // 資料監聽
-      useEffect(() => {
-        if (!user) return;
-        const unsubS = onSnapshot(getDataRef('schedules'), (snap) => setSchedules(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const unsubE = onSnapshot(getDataRef('expenses'), (snap) => setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const unsubT = onSnapshot(getDataRef('todos'), (snap) => setTodos(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const unsubM = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), (snap) => {
-          if (snap.exists()) setMembers(snap.data().list);
-        });
-        return () => { unsubS(); unsubE(); unsubT(); unsubM(); };
-      }, [user]);
-
-      const currentItems = useMemo(() => 
-        schedules.filter(s => s.date === selectedDay).sort((a,b) => a.time.localeCompare(b.time)),
-      [schedules, selectedDay]);
-
-      const totalExpenseTWD = useMemo(() => 
-        expenses.reduce((acc, ex) => acc + (ex.amount * (ex.currency === 'CHF' ? RATE_CHF : 1)), 0),
-      [expenses]);
-
-      // --- 核心功能修復 ---
-      const handleAddSchedule = async (e) => {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        await addDoc(getDataRef('schedules'), {
-          date: selectedDay, time: fd.get('time'), city: fd.get('city'), 
-          title: fd.get('title'), category: 'spot', done: false, timestamp: Date.now()
-        });
-        setIsAddingModalOpen(false);
-      };
-
-      const handleAddExpense = async (e) => {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        await addDoc(getDataRef('expenses'), {
-          user: fd.get('user'), title: fd.get('title'), 
-          amount: parseFloat(fd.get('amount')), currency: fd.get('currency'), timestamp: Date.now()
-        });
-        setIsAddingModalOpen(false);
-      };
-
-      const handleAddMember = async (name) => {
-        if (!name || members.includes(name)) return;
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), { list: [...members, name] });
-      };
-
-      const SWISS_DAYS = Array.from({length: 13}, (_, i) => {
-        const d = new Date(2026, 2, 18 + i);
-        return { id: `2026-03-${18+i}`, label: `Day ${i+1}`, date: `3/${18+i}` };
-      });
-
-      return (
-        <div className="min-h-screen pb-32 text-[#1C1912] font-black">
-          {/* Header */}
-          <header className="sticky top-0 z-50 bg-[#CFC8B3]/90 backdrop-blur-md px-6 py-8 flex justify-between items-center border-b-2 border-black/5">
-            <div>
-              <h1 className="text-3xl font-black tracking-tighter italic">SWISS 2026</h1>
-              <p className="text-[10px] tracking-[0.4em] opacity-50 uppercase">Shared Diary</p>
+      <main className="px-6 py-6 max-w-lg mx-auto pb-40">
+        
+        {activeTab === 'schedule' && (
+          <div className="space-y-8 animate-fade-in">
+            {/* 天氣看板 */}
+            <div className="bg-gradient-to-br from-[#8BA6A9] to-[#6C8D91] rounded-[2.5rem] p-6 text-white shadow-xl relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2 opacity-80">
+                  <MapPin size={14} /><span className="text-[10px] font-bold tracking-widest uppercase">Interlaken, Switzerland</span>
+                </div>
+                <div className="flex justify-between items-end">
+                  <div><h3 className="text-4xl font-black tracking-tighter">3°C / 9°C</h3><p className="text-sm font-bold opacity-80 mt-1">晴時多雲 (Partly Cloudy)</p></div>
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1 text-[11px] font-bold mb-1"><CloudRain size={12} /> 降雨 15%</div>
+                    <p className="text-[10px] opacity-60">Visibility: 12km</p>
+                  </div>
+                </div>
+              </div>
+              <MapIcon size={80} className="absolute -bottom-4 -right-4 opacity-10 rotate-12" />
             </div>
-            <button onClick={() => setIsAddingModalOpen(true)} className="bg-[#1C1912] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-              <Plus size={24} strokeWidth={3} />
-            </button>
-          </header>
 
-          <main className="px-6 py-4 max-w-lg mx-auto">
-            {activeTab === 'schedule' && (
-              <div className="space-y-8 animate-fade-in">
-                {/* 1. 總表大綱 (參考範例圖風格) */}
-                <div className="bg-white/50 rounded-[2.5rem] p-8 journal-card">
-                  <p className="text-[10px] font-black uppercase text-[#8E9775] mb-6 tracking-widest">Daily Timeline 大綱</p>
-                  <div className="relative pl-6 space-y-8">
-                    <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-[#1C1912]/10"></div>
-                    {currentItems.map((item) => (
-                      <div key={item.id} className="relative flex items-start gap-4">
-                        <div className="absolute -left-[24px] top-1.5 w-3 h-3 rounded-full bg-[#1C1912] border-2 border-[#CFC8B3] z-10"></div>
-                        <span className="text-[12px] font-mono text-[#8E9775] w-14 shrink-0">{item.time}</span>
-                        <div className="flex-1">
-                          <h4 className="text-[15px] leading-tight">{item.title}</h4>
-                          <div className="flex items-center gap-2 mt-1 opacity-40">
-                             <MapPin size={10} /> <span className="text-[10px] uppercase">{item.city}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {currentItems.length === 0 && <p className="text-sm opacity-30 italic py-4">今天還沒有安排行程...</p>}
-                  </div>
-                </div>
-
-                {/* 日期選擇 */}
-                <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
-                  {SWISS_DAYS.map(day => (
-                    <button key={day.id} onClick={() => setSelectedDay(day.id)} className={`flex-shrink-0 w-20 h-20 rounded-3xl flex flex-col items-center justify-center transition-all ${selectedDay === day.id ? 'date-active' : 'bg-white/40 opacity-40'}`}>
-                      <span className="text-[9px] font-bold">{day.label}</span>
-                      <span className="text-sm font-mono">{day.date}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* 詳細卡片 */}
-                <div className="space-y-6">
-                  {currentItems.map(item => (
-                    <div key={item.id} className={`bg-white p-6 rounded-[2rem] journal-card ${item.done ? 'opacity-40 grayscale' : ''}`}>
-                      <div className="flex justify-between items-start mb-4">
-                        <span className="text-[11px] bg-black/5 px-3 py-1 rounded-full uppercase tracking-widest">{item.city}</span>
-                        <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id))}><Trash2 size={16} className="opacity-20"/></button>
-                      </div>
-                      <h3 className="text-xl mb-4 leading-tight">{item.title}</h3>
-                      <div className="flex gap-2">
-                        <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id), {done: !item.done})} className={`flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors ${item.done ? 'bg-green-500 text-white' : 'bg-[#8E9775]/10 text-[#8E9775]'}`}>
-                          <Check size={18} strokeWidth={3} /> {item.done ? '已完成' : '標記完成'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* 今日大綱總表 */}
+            <div className="bg-white/60 rounded-[3rem] p-8 border-2 border-white/50 shadow-inner">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black tracking-tighter">今日大綱</h3>
+                <span className="text-[10px] bg-black/5 px-3 py-1 rounded-full opacity-50">Day {SWISS_DAYS.findIndex(d => d.id === selectedDay) + 1}</span>
               </div>
-            )}
-
-            {/* 航班憑證分頁 - 根據圖片精確修正 */}
-            {activeTab === 'booking' && (
-              <div className="space-y-8 animate-fade-in">
-                <h2 className="text-2xl px-2 italic">Flight Tickets</h2>
-                {/* 去程 */}
-                <div className="bg-white rounded-[2.5rem] overflow-hidden journal-card">
-                  <div className="bg-[#AA1D24] p-6 text-white flex justify-between items-center">
-                    <div><p className="text-sm opacity-70">Emirates • 3/18</p><p className="text-xl font-mono">EK0387 / EK0087</p></div>
-                    <div className="text-right"><p className="text-[10px] opacity-70">STATUS</p><p className="font-mono">CONFIRMED</p></div>
-                  </div>
-                  <div className="p-8 space-y-6 font-mono">
-                    <div className="flex justify-between items-center">
-                      <div className="text-center flex-1"><p className="text-3xl">TPE</p><p className="text-xs text-[#8E9775]">00:20</p></div>
-                      <ArrowRight className="opacity-20" size={20} />
-                      <div className="text-center flex-1"><p className="text-3xl">DXB</p><p className="text-xs opacity-40">06:10</p></div>
-                    </div>
-                    <div className="border-t border-dashed border-black/5 pt-6 flex justify-between items-center">
-                      <div className="text-center flex-1 opacity-40"><p className="text-3xl">DXB</p><p className="text-xs">08:25</p></div>
-                      <ArrowRight className="opacity-20" size={20} />
-                      <div className="text-center flex-1"><p className="text-3xl text-[#1C1912]">ZRH</p><p className="text-xs text-[#8E9775]">12:25</p></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 回程 */}
-                <div className="bg-white rounded-[2.5rem] overflow-hidden journal-card">
-                  <div className="bg-[#1C1912] p-6 text-white flex justify-between items-center">
-                    <div><p className="text-sm opacity-70">Emirates • 3/30-31</p><p className="text-xl font-mono">EK0088 / EK0366</p></div>
-                    <div className="text-right"><p className="text-[10px] opacity-70">STATUS</p><p className="font-mono">CONFIRMED</p></div>
-                  </div>
-                  <div className="p-8 space-y-6 font-mono">
-                    <div className="flex justify-between items-center">
-                      <div className="text-center flex-1"><p className="text-3xl">ZRH</p><p className="text-xs text-[#8E9775]">15:30</p></div>
-                      <ArrowRight className="opacity-20" size={20} />
-                      <div className="text-center flex-1"><p className="text-3xl opacity-40">DXB</p><p className="text-xs">23:45</p></div>
-                    </div>
-                    <div className="border-t border-dashed border-black/5 pt-6 flex justify-between items-center">
-                      <div className="text-center flex-1 opacity-40"><p className="text-3xl">DXB</p><p className="text-xs">03:45</p></div>
-                      <ArrowRight className="opacity-20" size={20} />
-                      <div className="text-center flex-1"><p className="text-3xl text-[#1C1912]">TPE</p><p className="text-xs text-[#8E9775]">16:10</p></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 記帳分頁 */}
-            {activeTab === 'expense' && (
-              <div className="space-y-6 animate-fade-in">
-                <div className="bg-[#1C1912] text-white p-10 rounded-[2.5rem] shadow-xl">
-                  <p className="text-[10px] opacity-50 tracking-widest mb-2">TOTAL ESTIMATED</p>
-                  <h2 className="text-5xl font-mono tracking-tighter italic">NT$ {totalExpenseTWD.toLocaleString()}</h2>
-                </div>
-                {expenses.map(ex => (
-                  <div key={ex.id} className="bg-white p-6 rounded-[2rem] journal-card flex justify-between items-center">
-                    <div>
-                      <p className="text-xl tracking-tight">{ex.title}</p>
-                      <p className="text-[10px] text-[#8E9775] font-mono">@{ex.user} • {ex.currency} {ex.amount}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <p className="text-lg font-mono">NT$ {Math.round(ex.amount * (ex.currency === 'CHF' ? RATE_CHF : 1)).toLocaleString()}</p>
-                      <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', ex.id))}><Trash2 size={16} className="opacity-20"/></button>
-                    </div>
+              <div className="relative pl-6 space-y-6">
+                <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-[#8E9775]/20"></div>
+                {currentItems.map((item) => (
+                  <div key={item.id} className="relative flex items-start gap-4">
+                    <div className="absolute -left-[24px] top-1.5 w-3 h-3 rounded-full bg-[#8E9775] border-2 border-white shadow-sm z-10"></div>
+                    <div className="w-16 shrink-0 pt-0.5"><p className="text-[12px] font-mono font-black text-[#8E9775] leading-none">{String(item.time || "")}</p></div>
+                    <div className="flex-1"><p className="text-[14px] font-black leading-tight text-[#1C1912]">{String(item.title || "")}</p></div>
                   </div>
                 ))}
               </div>
-            )}
-          </main>
+            </div>
 
-          {/* Tab Bar */}
-          <nav className="fixed bottom-0 left-0 right-0 bg-[#1C1912] text-white/40 px-6 py-8 flex justify-around items-center rounded-t-[3rem] z-50">
-            {[
-              { id: 'schedule', icon: Calendar, label: '行程' },
-              { id: 'booking', icon: CreditCard, label: '憑證' },
-              { id: 'expense', icon: Wallet, label: '記帳' },
-              { id: 'planning', icon: CheckSquare, label: '準備' }
-            ].map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 ${activeTab === tab.id ? 'text-[#8E9775] scale-110' : ''}`}>
-                <tab.icon size={24} />
-                <span className="text-[10px] font-bold">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
+            {/* 橫向日期選擇器 */}
+            <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar touch-pan-x">
+              {SWISS_DAYS.map(day => (
+                <button key={day.id} onClick={() => setSelectedDay(day.id)} className={`flex-shrink-0 flex flex-col items-center justify-center w-24 h-24 rounded-[2.5rem] transition-all ${selectedDay === day.id ? 'bg-[#8E9775] text-white scale-110 shadow-lg rotate-[-2deg]' : 'bg-white/40 opacity-40'}`}>
+                  <span className="text-[10px] font-bold opacity-70 uppercase mb-1">{day.label}</span>
+                  <span className="text-sm font-mono font-black">{day.date}</span>
+                </button>
+              ))}
+            </div>
 
-          {/* 新增彈窗 */}
-          {isAddingModalOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-              <div className="bg-[#F7F4EB] w-full max-w-sm rounded-[3rem] p-10 journal-card">
-                <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl italic">Add Record</h2>
-                  <button onClick={() => setIsAddingModalOpen(false)}>✕</button>
-                </div>
-                
-                {activeTab === 'schedule' ? (
-                  <form onSubmit={handleAddSchedule} className="space-y-4">
-                    <input name="time" type="time" required className="w-full p-4 rounded-2xl border-2 border-black/5" />
-                    <input name="city" placeholder="城市" className="w-full p-4 rounded-2xl border-2 border-black/5" />
-                    <input name="title" required placeholder="計畫名稱" className="w-full p-4 rounded-2xl border-2 border-black/5" />
-                    <button type="submit" className="w-full bg-[#8E9775] text-white py-5 rounded-full font-bold shadow-lg">Confirm</button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleAddExpense} className="space-y-4">
-                    <select name="user" className="w-full p-4 rounded-2xl border-2 border-black/5">
-                      {members.map(m => <option key={m} value={m}>@{m}</option>)}
-                    </select>
-                    <input name="title" required placeholder="品項" className="w-full p-4 rounded-2xl border-2 border-black/5" />
-                    <div className="flex gap-2">
-                      <input name="amount" type="number" required placeholder="金額" className="flex-1 p-4 rounded-2xl border-2 border-black/5" />
-                      <select name="currency" className="p-4 rounded-2xl border-2 border-black/5"><option>CHF</option><option>TWD</option></select>
+            {/* 詳細行程拖曳列表 (包含進度小人) */}
+            <div className="relative pl-10 space-y-8">
+              <div className="absolute left-[18px] top-4 bottom-4 w-[2.5px] bg-[#1C1912]/10 rounded-full"></div>
+              <Reorder.Group axis="y" values={currentItems} onReorder={handleReorder} className="space-y-8">
+                {currentItems.map((item, idx) => (
+                  <Reorder.Item key={item.id} value={item} className="relative group">
+                    {idx === nextRunnerIdx && <div className="absolute -left-[45px] top-4 z-20 animate-bounce"><span className="text-3xl">🏃‍♂️</span></div>}
+                    <div className={`bg-white rounded-[2.5rem] journal-card p-6 relative active:scale-[0.98] transition-all overflow-hidden ${item.done ? 'opacity-40 grayscale' : ''}`}>
+                      <div className={`absolute top-0 right-0 w-3 h-full ${CATEGORY_COLORS[item.category] || 'bg-gray-200'}`} />
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="text-[10px] font-bold bg-black/5 px-3 py-1 rounded-lg">📍 {String(item.city || "")}</span>
+                        <div className="flex gap-2">
+                           <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center cursor-grab text-gray-300"><MoveVertical size={14} /></div>
+                           <button onClick={() => askConfirm("刪除行程", "確定要刪除這項計畫嗎？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id)); setConfirmData(null); })} className="text-red-200"><Trash2 size={16}/></button>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-mono font-black text-[#8E9775]">{String(item.time || "")}</span>
+                            <button onClick={() => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', item.id), { done: !item.done })} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 ${item.done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-100'}`}><Check size={18} strokeWidth={5}/></button>
+                          </div>
+                          <h4 className="text-xl font-black leading-tight mb-2 pr-4">{String(item.title || "")}</h4>
+                          {item.mapUrl && <a href={String(item.mapUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] bg-blue-50 text-blue-600 px-3 py-2 rounded-xl font-black hover:bg-blue-100 mb-4"><Navigation size={12}/> GOOGLE MAPS 導航</a>}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        {[1, 2].map(slot => (
+                          <div key={slot} className="relative aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-dashed border-gray-100 flex items-center justify-center group/photo">
+                            {item[`photo${slot}`] ? <img src={String(item[`photo${slot}`])} className="w-full h-full object-cover" alt="" /> : <Camera size={24} className="opacity-10"/>}
+                            <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(item.id, slot, e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <button type="submit" className="w-full bg-[#1C1912] text-white py-5 rounded-full font-bold shadow-lg">Confirm</button>
-                  </form>
-                )}
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            </div>
+          </div>
+        )}
+
+        {/* 記帳分頁 - 新增成員統計與消費照 */}
+        {activeTab === 'expense' && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="bg-[#1C1912] rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
+              <div className="absolute top-6 right-8 text-right opacity-30"><p className="text-[10px] font-bold">1 CHF = {RATE_CHF} TWD</p></div>
+              <p className="text-[12px] text-[#8E9775] mb-4 tracking-[0.4em] uppercase">Budget Tracking</p>
+              <h2 className="text-6xl font-black tracking-tighter italic"><span className="text-xl opacity-40 mr-2">NT$</span>{Math.round(totalExpenseTWD).toLocaleString()}</h2>
+              
+              {/* 各自成員統計區 */}
+              <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 gap-4">
+                {Object.entries(expenseSummary).map(([name, total]) => (
+                  <div key={name}>
+                    <p className="text-[10px] opacity-40 uppercase">@{name}</p>
+                    <p className="text-sm font-mono">NT$ {Math.round(total).toLocaleString()}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-        </div>
-      );
-    }
+            
+            <div className="space-y-4">
+              {expenses.map(ex => (
+                <div key={ex.id} className="bg-white rounded-[2.5rem] p-8 journal-card flex justify-between items-center relative">
+                  <div className="flex gap-4 items-center">
+                    {ex.photo && <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm border border-black/5"><img src={String(ex.photo)} className="w-full h-full object-cover" alt="" /></div>}
+                    <div>
+                      <p className="text-2xl font-black tracking-tight">{String(ex.title || "")}</p>
+                      <p className="text-[10px] text-[#8E9775] uppercase mt-1 font-mono tracking-widest">@{String(ex.user || "")} • {String(ex.currency || "")} {Number(ex.amount || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="text-right flex items-center gap-4">
+                    <p className="text-2xl font-black tracking-tighter italic">NT$ {Math.round(ex.amount * (ex.currency === 'CHF' ? RATE_CHF : 1)).toLocaleString()}</p>
+                    <button onClick={() => askConfirm("刪除支出", "確定要刪除這筆花費明細嗎？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', ex.id)); setConfirmData(null); })} className="text-red-100 hover:text-red-400"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-    const root = createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
-</body>
-</html>
+        {/* 憑證分頁 - 擬真登機證 */}
+        {activeTab === 'booking' && (
+          <div className="space-y-10 animate-fade-in">
+            <h2 className="text-4xl font-black tracking-tighter px-2">BOARDING PASS</h2>
+            <div className="space-y-8">
+              {bookings.map((ticket, idx) => (
+                <div key={idx} className="bg-white rounded-[2rem] shadow-xl overflow-hidden border-2 border-black flex flex-col journal-card">
+                  <div className={`p-6 text-white flex justify-between items-center ${ticket.type === '去程' ? 'bg-[#AA1D24]' : 'bg-[#1C1912]'}`}>
+                    <div className="flex items-center gap-4">
+                      <Plane size={24} />
+                      <div><p className="text-xl font-black tracking-tighter uppercase">{ticket.type} • Emirates</p><p className="text-[10px] opacity-70 font-mono tracking-widest uppercase">{ticket.flightNo} • {ticket.model}</p></div>
+                    </div>
+                    <div className="text-right"><p className="text-[10px] opacity-70">DATE</p><p className="font-mono">{ticket.date}</p></div>
+                  </div>
+                  <div className="p-8 grid grid-cols-3 items-center text-center font-mono">
+                    <div><p className="text-4xl font-black">{ticket.from}</p><p className="text-xs text-[#8E9775] font-bold">{ticket.departureTime}</p></div>
+                    <div className="flex flex-col items-center opacity-30">
+                      <p className="text-[8px] mb-1">{ticket.duration}</p>
+                      <div className="w-full h-[2px] bg-black relative"><div className="absolute right-0 top-1/2 -translate-y-1/2"><ArrowRight size={12}/></div></div>
+                    </div>
+                    <div><p className="text-4xl font-black">{ticket.to}</p><p className="text-xs text-[#8E9775] font-bold">{ticket.arrivalTime}</p></div>
+                  </div>
+                  <div className="px-8 pb-8 flex justify-between items-center border-t border-dashed border-gray-100 pt-6">
+                    <div className="flex gap-6">
+                      <div><p className="text-[8px] opacity-40">TRANSIT</p><p className="text-xs font-bold">{ticket.transitInfo || "DIRECT"}</p></div>
+                      <div><p className="text-[8px] opacity-40">GATE</p><p className="text-xs font-bold">MOCK</p></div>
+                    </div>
+                    <button onClick={() => askConfirm("移除機票", "確定要刪除這張憑證？", async () => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', ticket.id)); setConfirmData(null); })}><Trash2 size={16} className="opacity-20"/></button>
+                  </div>
+                </div>
+              ))}
+              {bookings.length === 0 && <p className="text-center opacity-30 py-20 italic">尚未錄入機票憑證...</p>}
+            </div>
+          </div>
+        )}
+
+        {/* 備忘清單 - 修正 Add 功能 */}
+        {activeTab === 'checklist' && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="bg-[#8E9775] text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
+              <Luggage size={80} className="absolute -bottom-4 -right-4 opacity-10 rotate-12" />
+              <p className="text-[12px] opacity-70 tracking-widest mb-2">PERSONAL CHECKLIST</p>
+              <h2 className="text-4xl font-black tracking-tighter">裝備與備忘</h2>
+            </div>
+            <div className="space-y-4">
+              {checklist.map(item => (
+                <div key={item.id} className={`bg-white p-6 rounded-[2.5rem] journal-card flex justify-between items-center ${item.done ? 'opacity-40' : ''}`}>
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => toggleChecklist(item.id, item.done)} className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${item.done ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-50'}`}><Check size={24} strokeWidth={4}/></button>
+                    <span className={`text-xl font-black ${item.done ? 'line-through opacity-50' : ''}`}>{String(item.text || "")}</span>
+                  </div>
+                  <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'checklist', item.id))} className="text-red-100"><Trash2 size={18}/></button>
+                </div>
+              ))}
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const text = e.target.elements.itemInput.value;
+                if (!text) return;
+                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'checklist'), { text, done: false, timestamp: Date.now() });
+                e.target.elements.itemInput.value = "";
+              }} className="flex gap-3 mt-8">
+                <input name="itemInput" placeholder="需要帶什麼？" className="flex-1 bg-white p-6 rounded-[2rem] border-2 border-black/5 outline-none font-black shadow-inner" />
+                <button type="submit" className="bg-[#1C1912] text-white px-8 rounded-[2rem] font-black active:scale-90">ADD</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 筆記聊天 */}
+        {activeTab === 'notebook' && (
+          <div className="space-y-6 animate-fade-in flex flex-col min-h-[60vh]">
+             <h2 className="text-4xl font-black tracking-tighter px-2 flex items-center gap-3"><MessageSquare className="text-[#8E9775]" size={32} /> NOTEBOOK</h2>
+            <div className="flex-1 bg-white/40 rounded-[3rem] p-6 border-2 border-white min-h-[400px] flex flex-col">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2 no-scrollbar">
+                {notes.map(note => (
+                  <div key={note.id} className={`flex flex-col ${note.user === 'Zora' ? 'items-end' : 'items-start'}`}>
+                    <div className="flex items-center gap-2 mb-1 px-2"><span className="text-[9px] font-bold text-[#8E9775]">@{String(note.user || "")}</span></div>
+                    <div className={`p-4 rounded-3xl max-w-[85%] text-sm font-bold shadow-sm ${note.user === 'Zora' ? 'bg-[#8E9775] text-white rounded-tr-none' : 'bg-white text-[#1C1912] rounded-tl-none'}`}>{String(note.text || "")}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 flex gap-3">
+                <input id="chat-input" placeholder="輸入即時筆記..." className="flex-1 bg-white p-5 rounded-full border-2 border-black/5 shadow-inner text-sm font-bold"
+                  onKeyDown={async (e) => { if(e.key === 'Enter') { const res = await handleSendMessage(e.target.value); if(res === "clear") e.target.value = ""; } }}
+                />
+                <button onClick={async () => { const input = document.getElementById('chat-input'); const res = await handleSendMessage(input.value); if(res === "clear") input.value = ""; }} className="w-14 h-14 bg-black text-white rounded-full flex items-center justify-center active:scale-90"><Send size={20} /></button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#1C1912]/98 backdrop-blur-3xl px-6 py-10 flex justify-around items-center z-[1000] rounded-t-[4rem] shadow-2xl max-w-lg mx-auto">
+        {[
+          { id: 'schedule', icon: Calendar, label: '行程' }, { id: 'booking', icon: CreditCard, label: '憑證' }, { id: 'expense', icon: Wallet, label: '記帳' }, { id: 'checklist', icon: CheckSquare, label: '清單' }, { id: 'notebook', icon: MessageSquare, label: '筆記' }
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-2 transition-all ${activeTab === tab.id ? 'text-[#8E9775] scale-110' : 'text-white/30'}`}>
+            <tab.icon size={26} strokeWidth={activeTab === tab.id ? 4 : 2} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* 新增紀錄 Modal */}
+      <Modal isOpen={isAddingModalOpen} onClose={() => setIsAddingModalOpen(false)} title="新增旅行紀錄">
+         {activeTab === 'schedule' ? (
+          <form onSubmit={handleAddSchedule} className="space-y-5 pb-6">
+            <div className="grid grid-cols-2 gap-4">
+              <input name="time" type="time" required className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+              <input name="city" placeholder="城市地點" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+            </div>
+            <input name="title" required placeholder="計畫標題" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+            <input name="note" placeholder="詳細備註" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+            <input name="mapUrl" placeholder="GOOGLE MAP 連結" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+            <button type="submit" className="w-full bg-[#8E9775] text-white py-8 rounded-[3rem] font-black text-xl shadow-xl active:scale-95 transition-all">CONFIRM SAVE</button>
+          </form>
+        ) : activeTab === 'expense' ? (
+          <form onSubmit={handleAddExpense} className="space-y-5 pb-6">
+            <select name="user" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black">{members.map(m => <option key={m} value={m}>@{m}</option>)}</select>
+            <input name="title" required placeholder="消費品項" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+            <div className="grid grid-cols-2 gap-4">
+              <input name="amount" type="number" step="0.01" required placeholder="金額" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black outline-none" />
+              <select name="currency" className="w-full p-6 rounded-3xl bg-gray-50 border-2 border-black/5 font-black">{CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
+            </div>
+            <div className="flex flex-col gap-2 p-6 rounded-3xl bg-gray-50 border-2 border-black/5">
+              <p className="text-[10px] font-bold opacity-40">上傳消費照片 (選填)</p>
+              <div className="flex gap-4 items-center">
+                <input type="file" accept="image/*" onChange={(e) => { const reader = new FileReader(); reader.onload = (ev) => setExpensePhoto(ev.target.result); reader.readAsDataURL(e.target.files[0]); }} className="text-xs" />
+                {expensePhoto && <div className="w-12 h-12 rounded-xl overflow-hidden border border-black/10"><img src={expensePhoto} className="w-full h-full object-cover" alt="" /></div>}
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-[#1C1912] text-white py-8 rounded-[3rem] font-black text-xl shadow-xl active:scale-95">RECORD EXPENSE</button>
+          </form>
+        ) : activeTab === 'booking' ? (
+          <form onSubmit={handleAddBooking} className="space-y-4 pb-6">
+            <div className="grid grid-cols-2 gap-4">
+              <select name="type" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black"><option value="去程">去程</option><option value="回程">回程</option></select>
+              <input name="date" type="date" required className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <input name="flightNo" required placeholder="航班號 (如 EK0387)" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+              <input name="model" placeholder="機型 (如 B777)" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <input name="from" required placeholder="出發地 (如 TPE)" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+              <input name="to" required placeholder="目的地 (如 DXB)" className="p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1"><p className="text-[8px] opacity-40">出發時間</p><input name="departureTime" type="time" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" /></div>
+              <div className="space-y-1"><p className="text-[8px] opacity-40">抵達時間</p><input name="arrivalTime" type="time" required className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" /></div>
+            </div>
+            <input name="transitInfo" placeholder="轉機資訊 (如 DXB 2h15m)" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+            <input name="duration" placeholder="飛行總時數 (如 9h50m)" className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-black/5 font-black" />
+            <button type="submit" className="w-full bg-[#AA1D24] text-white py-6 rounded-[2rem] font-black shadow-xl">SAVE PASS</button>
+          </form>
+        ) : <p className="text-center opacity-40 py-10">請點擊下方輸入框新增備忘事項...</p>}
+      </Modal>
+
+      {/* 二次確認彈窗 */}
+      <AnimatePresence>
+        {confirmData && (
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-sm rounded-[3rem] p-12 text-center shadow-2xl">
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500"><AlertCircle size={48} strokeWidth={3} /></div>
+              <h3 className="text-2xl font-black mb-4">{String(confirmData.title || "")}</h3>
+              <p className="text-sm text-gray-400 mb-10 leading-relaxed">{String(confirmData.message || "")}</p>
+              <div className="flex gap-4">
+                <button onClick={() => setConfirmData(null)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black text-gray-500 active:scale-95 transition-transform">取消</button>
+                <button onClick={confirmData.action} className="flex-1 py-5 bg-red-500 text-white rounded-2xl font-black shadow-lg shadow-red-200 active:scale-95 transition-transform">確定</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <Modal isOpen={isPrepCompleteModalOpen} onClose={() => setIsPrepCompleteModalOpen(false)} title="準備就緒！">
+        <div className="text-center py-10 space-y-6">
+          <div className="text-7xl animate-bounce">🇨🇭</div>
+          <h3 className="text-3xl font-black">準備完成！旅途愉快！</h3>
+          <p className="text-gray-400 leading-relaxed px-6">您所有的備忘清單都已經打勾了。瑞士大冒險即將開始，祝您擁有一段難忘的旅程！</p>
+          <button onClick={() => setIsPrepCompleteModalOpen(false)} className="w-full bg-[#8E9775] text-white py-6 rounded-3xl font-black shadow-xl">出發吧！</button>
+        </div>
+      </Modal>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .journal-card { border: 3px solid #1C1912; box-shadow: 15px 15px 0px rgba(0,0,0,0.1); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .journal-card:active { transform: scale(0.98); box-shadow: 5px 5px 0px rgba(0,0,0,0.1); }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      `}</style>
+    </div>
+  );
+}
