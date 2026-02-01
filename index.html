@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Swiss Diary 2026</title>
+    <!-- 使用 CDN 加載工具，繞過 Netlify 掃描 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #CFC8B3; color: #1C1912; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .tab-active { color: #3B82F6; transform: scale(1.1); font-weight: 900; }
+        .date-active { background-color: #3B82F6; color: white; border-color: white; transform: scale(1.1); font-weight: 900; }
+    </style>
+</head>
+<body class="min-Swiss-Diary min-h-screen pb-32 overflow-x-hidden select-none">
+
+    <!-- 頂部標題列 -->
+    <header class="sticky top-0 z-50 bg-[#CFC8B3]/95 backdrop-blur-xl px-6 py-10 flex justify-between items-center border-b-[3px] border-black/10 shadow-2xl">
+        <div class="flex items-center gap-5">
+            <div class="w-16 h-16 bg-[#1C1912] rounded-[2.2rem] flex items-center justify-center text-[#CFC8B3] shadow-xl rotate-3 border-4 border-white/10">
+                <i data-lucide="map" class="w-9 h-9"></i>
+            </div>
+            <div>
+                <h1 class="text-4xl font-black tracking-tighter leading-none mb-1">SWISS 2026</h1>
+                <p class="text-[11px] text-blue-600 font-black uppercase tracking-[0.7em] opacity-80">Shared Diary</p>
+            </div>
+        </div>
+        <div class="bg-[#A7B09E] text-white w-16 h-16 rounded-[1.8rem] shadow-2xl flex items-center justify-center border-[5px] border-white active:scale-50 transition-all">
+            <i data-lucide="plus" class="w-10 h-10 stroke-[4px]"></i>
+        </div>
+    </header>
+
+    <main id="app-content" class="px-6 py-8 max-w-lg mx-auto">
+        <!-- JS 將會在這裡動態渲染內容 -->
+    </main>
+
+    <!-- 底部導覽列 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#1C1912]/98 backdrop-blur-3xl px-4 py-8 flex justify-around items-center z-[60] rounded-t-[4rem] shadow-[0_-30px_100px_rgba(0,0,0,0.6)] border-t border-white/10 max-w-lg mx-auto">
+        <button onclick="switchTab('schedule')" class="nav-btn flex flex-col items-center gap-2 text-blue-400 scale-110 transition-all" id="btn-schedule">
+            <i data-lucide="calendar" class="w-6 h-6 stroke-[3px]"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">行程</span>
+        </button>
+        <button onclick="switchTab('booking')" class="nav-btn flex flex-col items-center gap-2 text-white/30" id="btn-booking">
+            <i data-lucide="credit-card" class="w-6 h-6 stroke-[2.5px]"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">憑證</span>
+        </button>
+        <button onclick="switchTab('expense')" class="nav-btn flex flex-col items-center gap-2 text-white/30" id="btn-expense">
+            <i data-lucide="wallet" class="w-6 h-6 stroke-[2.5px]"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">記帳</span>
+        </button>
+        <button onclick="switchTab('messages')" class="nav-btn flex flex-col items-center gap-2 text-white/30" id="btn-messages">
+            <i data-lucide="message-square" class="w-6 h-6 stroke-[2.5px]"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">留言</span>
+        </button>
+    </nav>
+
+    <script>
+        // --- 1. 完整數據定義 ---
+        const SWISS_DAYS = [
+            { id: '2026-03-18', label: 'Day 1', date: '3/18' }, { id: '2026-03-19', label: 'Day 2', date: '3/19' },
+            { id: '2026-03-20', label: 'Day 3', date: '3/20' }, { id: '2026-03-21', label: 'Day 4', date: '3/21' },
+            { id: '2026-03-22', label: 'Day 5', date: '3/22' }, { id: '2026-03-23', label: 'Day 6', date: '3/23' },
+            { id: '2026-03-24', label: 'Day 7', date: '3/24' }, { id: '2026-03-25', label: 'Day 8', date: '3/25' },
+            { id: '2026-03-26', label: 'Day 9', date: '3/26' }, { id: '2026-03-27', label: 'Day 10', date: '3/27' },
+            { id: '2026-03-28', label: 'Day 11', date: '3/28' }, { id: '2026-03-29', label: 'Day 12', date: '3/29' },
+            { id: '2026-03-30', label: 'Day 13', date: '3/30' }, { id: '2026-03-31', label: 'Day 14', date: '3/31' }
+        ];
+
+        const ALL_SCHEDULES = [
+            // Day 1
+            { date: '2026-03-18', time: '00:20', title: '台北 TPE (EK0387)', city: '台北', cat: 'flight', note: '啟程前往杜拜 (飛行 9h 50m)' },
+            { date: '2026-03-18', time: '12:25', title: '蘇黎世 ZRH 抵達', city: '蘇黎世', cat: 'flight', note: '辦理入境手續' },
+            { date: '2026-03-18', time: '13:30', title: '火車：蘇黎世 → 因特拉肯', city: '因特拉肯', cat: 'transport', note: '車程約 2 小時' },
+            // Day 2
+            { date: '2026-03-19', time: '08:40', title: '因特拉肯 → 格林德瓦', city: '格林德瓦', cat: 'transport' },
+            { date: '2026-03-19', time: '11:00', title: '少女峰 Jungfraujoch', city: '少女峰', cat: 'spot', note: '全歐最高火車站' },
+            // Day 10
+            { date: '2026-03-27', time: '09:00', title: 'Gornergrat 齒軌火車', city: '策馬特', cat: 'transport' },
+            { date: '2026-03-27', time: '10:30', title: 'Riffelsee 倒影湖', city: '策馬特', cat: 'spot', note: '拍攝馬特洪峰倒影' }
+        ];
+
+        const CATEGORY_COLORS = { spot: 'bg-[#A7B09E]', transport: 'bg-[#9BAEBC]', hotel: 'bg-[#E0D8C3]', flight: 'bg-[#C25E5E]' };
+        let activeTab = 'schedule';
+        let activeDay = '2026-03-18';
+
+        // --- 2. 渲染邏輯 ---
+        function render() {
+            const main = document.getElementById('app-content');
+            if (activeTab === 'schedule') {
+                main.innerHTML = `
+                    <div class="flex gap-4 overflow-x-auto pb-6 no-scrollbar touch-pan-x" id="date-scroll">
+                        ${SWISS_DAYS.map(d => `
+                            <button onclick="setActiveDay('${d.id}')" class="flex-shrink-0 flex flex-col items-center justify-center min-w-[75px] h-[75px] rounded-[2.2rem] transition-all border-[3.5px] ${d.id === activeDay ? 'date-active shadow-xl' : 'bg-white/40 text-[#1C1912]/40 border-transparent'}">
+                                <span class="text-[9px] uppercase mb-1 opacity-70">${d.label}</span>
+                                <span class="text-base">${d.date}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="relative pl-14 space-y-8 mt-4">
+                        <div class="absolute left-[1.65rem] top-8 bottom-8 w-[3px] bg-[#1C1912]/15 rounded-full"></div>
+                        ${renderItems()}
+                    </div>
+                `;
+            } else if (activeTab === 'booking') {
+                main.innerHTML = `
+                    <div class="space-y-8 animate-fade-in">
+                        <h2 class="text-3xl font-black text-[#1C1912] px-2">航班憑證</h2>
+                        <!-- 去程 -->
+                        <div class="bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border-b-[12px] border-[#AA1D24]">
+                            <div class="bg-[#AA1D24] p-8 text-white flex justify-between items-center font-black">
+                                <div><p class="text-xl">EMIRATES • 去程</p><p class="text-[10px] opacity-70">EK0387 / EK0087</p></div>
+                                <div class="bg-black/20 px-3 py-1 rounded-full text-xs">3/18 OK</div>
+                            </div>
+                            <div class="p-10 space-y-8 font-mono">
+                                <div class="flex justify-between items-center border-b border-dashed pb-6">
+                                    <div class="text-center"><p class="text-4xl font-black">TPE</p><p class="text-sm font-black text-blue-600">00:20</p></div>
+                                    <i data-lucide="arrow-right" class="opacity-20"></i>
+                                    <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm font-bold">06:10</p></div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="text-center opacity-40"><p class="text-4xl font-black">DXB</p><p class="text-sm font-bold">08:25</p></div>
+                                    <i data-lucide="arrow-right" class="opacity-20"></i>
+                                    <div class="text-center"><p class="text-4xl font-black">ZRH</p><p class="text-sm font-black text-blue-600">12:25</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                main.innerHTML = `<div class="py-40 text-center opacity-30 font-black italic">功能模組更新中...</div>`;
+            }
+            lucide.createIcons();
+        }
+
+        function renderItems() {
+            const items = ALL_SCHEDULES.filter(s => s.date === activeDay);
+            if (items.length === 0) return `<div class="py-20 text-center text-[#4A4433]/30 font-black italic">本日行程細節待確認</div>`;
+            return items.map(item => `
+                <div class="relative animate-fade-in">
+                    ${item.cat !== 'transport' ? `<div class="absolute -left-[3.25rem] top-8 z-20 w-12 h-12 rounded-full border-[5px] border-[#CFC8B3] flex items-center justify-center shadow-xl bg-white"><div class="w-3 h-3 rounded-full bg-[#1C1912]/20"></div></div>` : ''}
+                    <div class="bg-white rounded-[2rem] shadow-[12px_12px_0px_rgba(28,25,18,0.1)] border-[3px] border-[#4A4433] p-6 relative active:scale-95 transition-all ${item.cat === 'transport' ? 'bg-black/5 py-4 border-none shadow-none opacity-70' : ''}">
+                        ${item.cat !== 'transport' ? `<div class="absolute top-0 right-0 w-4 h-full rounded-r-[1.8rem] ${CATEGORY_COLORS[item.cat]}"></div>` : ''}
+                        <div class="flex flex-col gap-2">
+                            <span class="text-[10px] font-black bg-[#1C1912]/5 text-[#1C1912]/40 px-2.5 py-1 rounded-lg w-fit tracking-widest uppercase">📍 ${item.city}</span>
+                            <span class="text-xs font-black text-blue-600 font-mono">${item.time}</span>
+                            <h3 class="text-xl font-black text-[#1C1912] leading-tight">${item.title}</h3>
+                            ${item.note ? `<p class="text-[13px] text-[#1C1912]/60 font-bold italic border-l-[6px] border-[#1C1912]/10 pl-4 py-1 leading-relaxed bg-black/5 rounded-r-xl italic">“ ${item.note} ”</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function setActiveDay(dayId) { activeDay = dayId; render(); }
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('text-blue-400', 'scale-110'); btn.classList.add('text-white/30'); });
+            document.getElementById(`btn-${tabId}`).classList.replace('text-white/30', 'text-blue-400');
+            document.getElementById(`btn-${tabId}`).classList.add('scale-110');
+            render();
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>
