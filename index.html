@@ -157,16 +157,17 @@
             if (isConfigMissing || !user) return;
             const publicPath = (name) => collection(db, 'artifacts', appId, 'public', 'data', name);
             const privatePath = (name) => collection(db, 'artifacts', appId, 'users', user.uid, name);
+            const errorFn = (err) => { console.error("Firestore error:", err); setIsLoading(false); };
 
             const unsubS = onSnapshot(publicPath('schedules'), (snap) => {
               setSchedules(snap.docs.map(d => ({ id: d.id, ...d.data() })));
               setIsLoading(false);
-            });
+            }, errorFn);
             const unsubE = onSnapshot(publicPath('expenses'), snap => setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
             const unsubN = onSnapshot(publicPath('notes'), snap => setNotes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.timestamp - b.timestamp)));
             const unsubM = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'members'), snap => {
               if (snap.exists()) setMembers(snap.data().list);
-            });
+            }, errorFn);
             const unsubC = onSnapshot(privatePath('checklist'), snap => setChecklist(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
             const unsubB = onSnapshot(publicPath('bookings'), snap => setBookings(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
