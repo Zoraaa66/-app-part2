@@ -127,6 +127,7 @@
           const [confirmData, setConfirmData] = useState(null);
           const [expensePhoto, setExpensePhoto] = useState(null);
             const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+    
 
           // 安全定時器
           useEffect(() => { const timer = setTimeout(() => setIsLoading(false), 6000); return () => clearTimeout(timer); }, []);
@@ -414,6 +415,14 @@ const handleDeleteMember = async (idx) => {
                     </div>
                   </div>
                 )}
+                {/* 成員管理入口 */}
+<div onClick={() => setIsMemberModalOpen(true)} className="bg-white rounded-3xl p-6 mt-6 flex justify-between items-center cursor-pointer active:scale-95 transition-all shadow-sm border-2 border-black/5 journal-card">
+  <div className="flex items-center gap-4">
+    <div className="w-10 h-10 bg-[#8E9775]/10 rounded-xl flex items-center justify-center text-[#8E9775]"><User size={20} /></div>
+    <p className="font-black">成員管理 ({members.length})</p>
+  </div>
+  <ChevronRight size={20} className="opacity-30" />
+</div>
               </main>
 
               <nav className="fixed bottom-0 left-0 right-0 bg-[#1C1912]/98 backdrop-blur-3xl px-6 py-10 flex justify-around items-center z-100 rounded-t-[4rem] shadow-2xl max-w-lg mx-auto font-black font-black font-black">
