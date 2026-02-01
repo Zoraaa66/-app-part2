@@ -63,7 +63,17 @@
          * --- 1. 環境安全偵測與 Firebase 初始化 ---
          */
         let firebaseApp, db, auth, appId;
-        let isConfigMissing = false;
+        let isConfigMissing = 
+            {
+  apiKey: "AIzaSyCsVnnFIQ6P-PjYNqBMWxxX7bPXI42Y864",
+  authDomain: "swiss-trip-ddefe.firebaseapp.com",
+  projectId: "swiss-trip-ddefe",
+  storageBucket: "swiss-trip-ddefe.firebasestorage.app",
+  messagingSenderId: "33141127491",
+  appId: "1:33141127491:web:08508b42aba00fdfadd7f6",
+  measurementId: "G-Q9ZQS89ZLQ"
+};
+        //false;
 
         // 若您在外部環境 (如 Netlify) 使用，請將您的 Firebase Config 貼在下方 "" 中
         // const manualFirebaseConfig = { apiKey: "...", ... };
